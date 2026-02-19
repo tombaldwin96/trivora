@@ -1,0 +1,31 @@
+{
+  "name": "@mahan/web",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@mahan/core": "workspace:*",
+    "@mahan/supabase": "workspace:*",
+    "@mahan/ui": "workspace:*",
+    "@radix-ui/react-slot": "^1.1.0",
+    "@supabase/ssr": "^0.5.0",
+    "@supabase/supabase-js": "^2.47.0",
+    "next": "14.2.18",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.15",
+    "typescript": "~5.6.0"
+  }
+}

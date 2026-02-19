@@ -1,0 +1,24 @@
+{
+  "name": "mahan",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "dev:web": "pnpm --filter @mahan/web dev",
+    "dev:admin": "pnpm --filter @mahan/admin dev",
+    "dev:mobile": "pnpm --filter @mahan/mobile dev",
+    "lint": "turbo run lint",
+    "db:migrate": "pnpm --filter @mahan/supabase db:migrate",
+    "db:seed": "pnpm --filter @mahan/supabase db:seed",
+    "db:reset": "pnpm --filter @mahan/supabase db:reset",
+    "supabase:functions": "pnpm --filter @mahan/supabase supabase:functions"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "typescript": "~5.6.0"
+  },
+  "packageManager": "pnpm@9.14.2",
+  "engines": {
+    "node": ">=18"
+  }
+}

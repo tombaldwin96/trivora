@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "Mahan: The Quiz App",
+    "slug": "mahan",
+    "platforms": [
+      "ios",
+      "android"
+    ],
+    "version": "1.0.0",
+    "scheme": "mahan",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "icon": "./assets/Logo.png",
+    "splash": {
+      "backgroundColor": "#F97316"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

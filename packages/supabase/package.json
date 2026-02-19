@@ -1,0 +1,26 @@
+{
+  "name": "@mahan/supabase",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "db:migrate": "node scripts/migrate.mjs",
+    "db:seed": "tsx scripts/seed.ts",
+    "import-questions": "tsx scripts/import-questions-from-csv.ts",
+    "db:reset": "echo 'Run: supabase db reset' in supabase/",
+    "supabase:functions": "echo 'Deploy from repo root supabase/functions'"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.47.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.5",
+    "tsx": "^4.19.2",
+    "typescript": "~5.6.0"
+  },
+  "peerDependencies": {
+    "@mahan/core": "workspace:*"
+  }
+}

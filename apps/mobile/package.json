@@ -1,0 +1,52 @@
+{
+  "name": "@trivora/mobile",
+  "version": "0.0.1",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "generate-icon": "node scripts/generate-icon.js",
+    "postinstall": "cd ../.. && pnpm exec turbo run build --filter=@trivora/mobile...",
+    "dev": "expo start",
+    "tunnel": "expo start --tunnel",
+    "lan": "expo start --lan",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "build": "expo export",
+    "build:ios": "eas build --platform ios --profile production",
+    "submit:ios": "eas submit --platform ios --profile production --latest",
+    "build:ios:submit": "pnpm run build:ios && pnpm run submit:ios",
+    "lint": "expo lint"
+  },
+  "dependencies": {
+    "@expo/metro-runtime": "^6.1.2",
+    "@supabase/supabase-js": "^2.47.0",
+    "@trivora/core": "workspace:*",
+    "@trivora/supabase": "workspace:*",
+    "expo": "^54.0.33",
+    "expo-auth-session": "~7.0.10",
+    "expo-av": "~16.0.8",
+    "expo-blur": "^15.0.8",
+    "expo-clipboard": "~8.0.8",
+    "expo-constants": "~18.0.13",
+    "expo-haptics": "~15.0.8",
+    "expo-linear-gradient": "~15.0.8",
+    "expo-linking": "~8.0.11",
+    "expo-router": "~6.0.23",
+    "expo-secure-store": "~15.0.8",
+    "@react-native-async-storage/async-storage": "1.23.1",
+    "expo-status-bar": "~3.0.9",
+    "expo-web-browser": "~15.0.10",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-safe-area-context": "5.6.2",
+    "react-native-screens": "~4.16.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.0",
+    "@types/react": "~19.1.17",
+    "@types/react-dom": "~19.1.11",
+    "sharp": "^0.34.5",
+    "typescript": "~5.9.3"
+  }
+}
