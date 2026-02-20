@@ -1,10 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet, Alert, Animated, Easing, Image, KeyboardAvoidingView, ScrollView, Platform, Keyboard, Dimensions } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '@/lib/supabase';
-import { signInWithOAuthProvider } from '@/lib/auth-oauth';
+import { useResponsive, CONTENT_MAX_WIDTH } from '@/lib/responsive';
+
+const PENDING_REFERRAL_KEY = 'trivora_pending_referral_code';
+const LAST_LOGIN_EMAIL_KEY = 'trivora_last_login_email';
 
 const SHIMMER_WIDTH = 140;
 const SHIMMER_SWEEP_MS = 2000;
@@ -12,11 +17,61 @@ const SHIMMER_PAUSE_MS = 4000; // cycle = sweep + pause = 6s
 
 export default function HomeScreen() {
   const router = useRouter();
-  const [sessionChecked, setSessionChecked] = useState(false);
+  const params = useLocalSearchParams<{ ref?: string }>();
+  const [sessionCheckDone, setSessionCheckDone] = useState(false);
   const [email, setEmail] = useState('');
+  const [referralCodeInput, setReferralCodeInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [oauthLoading, setOauthLoading] = useState<'apple' | 'facebook' | null>(null);
+  const [referralExpanded, setReferralExpanded] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  const checkSession = useCallback(() => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) {
+        setSessionCheckDone(true);
+        return;
+      }
+      const { data: profile } = await supabase.from('profiles').select('is_blocked').eq('id', session.user.id).single();
+      if ((profile as { is_blocked?: boolean } | null)?.is_blocked) {
+        await supabase.auth.signOut();
+        setSessionCheckDone(true);
+        return;
+      }
+      router.replace('/(tabs)');
+    }).catch(() => setSessionCheckDone(true));
+  }, [router]);
+
+  // Defer first native/Supabase touch by 5s to avoid native exception during RN error conversion at boot (iOS Hermes crash).
+  const [sessionCheckAllowed, setSessionCheckAllowed] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setSessionCheckAllowed(true), 5000);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    if (!sessionCheckAllowed) return;
+    checkSession();
+  }, [sessionCheckAllowed, checkSession]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (sessionCheckAllowed) checkSession();
+    }, [sessionCheckAllowed, checkSession])
+  );
+
+  useEffect(() => {
+    if (params.ref?.trim()) {
+      setReferralCodeInput(params.ref.trim());
+      setReferralExpanded(true);
+    }
+  }, [params.ref]);
+
+  useEffect(() => {
+    if (!sessionCheckAllowed || !sessionCheckDone) return;
+    SecureStore.getItemAsync(LAST_LOGIN_EMAIL_KEY).then((stored) => {
+      if (stored?.trim()) setEmail(stored.trim());
+    }).catch(() => {});
+  }, [sessionCheckAllowed, sessionCheckDone]);
 
   const blockOpacity = useRef(new Animated.Value(0)).current;
   const blockScale = useRef(new Animated.Value(0.92)).current;
@@ -29,13 +84,7 @@ export default function HomeScreen() {
   const charTranslateY = useRef(new Animated.Value(-90)).current;
   const scrollRef = useRef<ScrollView>(null);
   const shimmerX = useRef(new Animated.Value(-SHIMMER_WIDTH)).current;
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSessionChecked(true);
-      if (session) router.replace('/(tabs)');
-    });
-  }, [router]);
+  const { isTablet } = useResponsive();
 
   useEffect(() => {
     const onShow = () => {
@@ -163,26 +212,33 @@ export default function HomeScreen() {
       Alert.alert('Error', error.message);
       return;
     }
+    try {
+      await SecureStore.setItemAsync(LAST_LOGIN_EMAIL_KEY, trimmed);
+    } catch {
+      // ignore storage errors
+    }
+    const ref = referralCodeInput.trim().toUpperCase();
+    if (ref) {
+      try {
+        await SecureStore.setItemAsync(PENDING_REFERRAL_KEY, ref);
+      } catch {
+        // ignore storage errors
+      }
+    }
     router.push({ pathname: '/auth/verify-otp', params: { email: trimmed } });
   }
 
-  async function handleApple() {
-    setOauthLoading('apple');
-    const { ok, error } = await signInWithOAuthProvider('apple');
-    setOauthLoading(null);
-    if (ok && !error) router.replace('/(tabs)');
-    else if (error) Alert.alert('Sign in with Apple', error);
-  }
+  const anyLoading = loading;
 
-  async function handleFacebook() {
-    setOauthLoading('facebook');
-    const { ok, error } = await signInWithOAuthProvider('facebook');
-    setOauthLoading(null);
-    if (ok && !error) router.replace('/(tabs)');
-    else if (error) Alert.alert('Sign in with Facebook', error);
+  if (!sessionCheckDone) {
+    return (
+      <View style={[styles.keyboardWrap, styles.sessionCheck]}>
+        {!sessionCheckAllowed && (
+          <Text style={styles.loadingText}>Loading…</Text>
+        )}
+      </View>
+    );
   }
-
-  const anyLoading = loading || oauthLoading !== null;
 
   const onTitlePressIn = () => {
     Animated.spring(pressScale, { toValue: 0.97, friction: 8, tension: 200, useNativeDriver: true }).start();
@@ -190,10 +246,6 @@ export default function HomeScreen() {
   const onTitlePressOut = () => {
     Animated.spring(pressScale, { toValue: 1, friction: 8, tension: 200, useNativeDriver: true }).start();
   };
-
-  if (!sessionChecked) {
-    return <View style={styles.keyboardWrap} />;
-  }
 
   return (
     <KeyboardAvoidingView
@@ -206,11 +258,12 @@ export default function HomeScreen() {
         contentContainerStyle={[
           styles.scrollContent,
           keyboardVisible && styles.scrollContentKeyboardUp,
+          isTablet && { alignItems: 'center' },
         ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-      <View style={styles.container}>
+      <View style={[styles.container, isTablet && { maxWidth: CONTENT_MAX_WIDTH, width: '100%' }]}>
       <View style={styles.characterContainer} pointerEvents="none">
         <Animated.View
           style={[
@@ -245,7 +298,7 @@ export default function HomeScreen() {
             </Animated.View>
           </View>
           <Animated.View style={{ transform: [{ scale: titleScale }] }}>
-            <Text style={styles.title}>MAHAN</Text>
+            <Image source={require('@/assets/Logo.png')} style={styles.titleLogo} resizeMode="contain" />
           </Animated.View>
           <Animated.View style={[styles.titleAccent, { transform: [{ scaleX: accentScale }, { scaleY: accentPulse }] }]} />
           <Animated.View style={{ opacity: taglineOpacity }}>
@@ -255,30 +308,7 @@ export default function HomeScreen() {
         </Animated.View>
       </Pressable>
       <Text style={styles.subtitle}>Daily quiz. 1v1 battles. Live events.</Text>
-
-      <Pressable
-        style={[styles.socialButton, styles.appleButton, anyLoading && styles.buttonDisabled]}
-        onPress={handleApple}
-        disabled={anyLoading}
-      >
-        <Ionicons name="logo-apple" size={22} color="#fff" />
-        <Text style={styles.appleButtonText}>Continue with Apple</Text>
-      </Pressable>
-      <Pressable
-        style={[styles.socialButton, styles.facebookButton, anyLoading && styles.buttonDisabled]}
-        onPress={handleFacebook}
-        disabled={anyLoading}
-      >
-        <Ionicons name="logo-facebook" size={22} color="#fff" />
-        <Text style={styles.facebookButtonText}>Continue with Facebook</Text>
-      </Pressable>
-
-      <View style={styles.divider}>
-        <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>or</Text>
-        <View style={styles.dividerLine} />
-      </View>
-
+      <View style={styles.subtitleDivider} />
       <Text style={styles.prompt}>Enter your email to get a sign-in code</Text>
       <TextInput
         style={styles.input}
@@ -291,6 +321,22 @@ export default function HomeScreen() {
         keyboardType="email-address"
         editable={!loading}
       />
+      <Pressable style={styles.referralToggle} onPress={() => setReferralExpanded((v) => !v)}>
+        <Text style={styles.referralPrompt}>Referral code (optional)</Text>
+        <Ionicons name={referralExpanded ? 'chevron-up' : 'chevron-down'} size={20} color="#64748b" />
+      </Pressable>
+      {referralExpanded && (
+        <TextInput
+          style={styles.input}
+          placeholder="Friend's code"
+          placeholderTextColor="#94a3b8"
+          value={referralCodeInput}
+          onChangeText={setReferralCodeInput}
+          autoCapitalize="characters"
+          autoCorrect={false}
+          editable={!loading}
+        />
+      )}
       <Pressable
         style={[styles.button, loading && styles.buttonDisabled]}
         onPress={sendCode}
@@ -307,6 +353,8 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   keyboardWrap: { flex: 1, backgroundColor: '#f1f5f9' },
+  sessionCheck: { justifyContent: 'center', alignItems: 'center' },
+  loadingText: { fontSize: 16, color: '#64748b', marginTop: 8 },
   scrollContent: { flexGrow: 1, justifyContent: 'center', paddingBottom: 40 },
   scrollContentKeyboardUp: { justifyContent: 'flex-end', paddingBottom: 280 },
   container: { padding: 24, backgroundColor: '#f1f5f9' },
@@ -332,7 +380,7 @@ const styles = StyleSheet.create({
     marginBottom: 0,
     marginHorizontal: -24,
     paddingTop: 40,
-    paddingBottom: 32,
+    paddingBottom: 14,
     paddingHorizontal: 24,
     backgroundColor: '#5b21b6',
     borderBottomLeftRadius: 0,
@@ -356,21 +404,12 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: SHIMMER_WIDTH,
   },
-  title: {
-    fontSize: 52,
-    fontWeight: '900',
-    color: '#ffffff',
-    textAlign: 'center',
-    letterSpacing: 4,
-    textShadowColor: 'rgba(0,0,0,0.25)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
-  },
+  titleLogo: { width: 1020, height: 245, maxWidth: '100%', marginBottom: 15 },
   titleAccent: {
     width: 72,
     height: 5,
     backgroundColor: '#f97316',
-    marginTop: 10,
+    marginTop: 0,
   },
   titleTagline: {
     fontSize: 13,
@@ -388,22 +427,11 @@ const styles = StyleSheet.create({
     letterSpacing: 3,
     marginTop: 8,
   },
-  subtitle: { fontSize: 16, fontWeight: '700', color: '#5b21b6', textAlign: 'center', marginTop: 28, marginBottom: 28 },
-  socialButton: {
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  appleButton: { backgroundColor: '#000', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
-  appleButtonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-  facebookButton: { backgroundColor: '#1877f2', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
-  facebookButtonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-  divider: { flexDirection: 'row', alignItems: 'center', marginVertical: 20 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: '#e2e8f0' },
-  dividerText: { marginHorizontal: 12, color: '#64748b', fontSize: 14 },
+  subtitle: { fontSize: 16, fontWeight: '700', color: '#5b21b6', textAlign: 'center', marginTop: 15, marginBottom: 20 },
+  subtitleDivider: { height: 1, backgroundColor: '#e5e7eb', marginHorizontal: 8, marginBottom: 20 },
   prompt: { fontSize: 16, fontWeight: '500', color: '#334155', marginBottom: 12 },
+  referralToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, marginBottom: 8, paddingVertical: 8 },
+  referralPrompt: { fontSize: 14, fontWeight: '500', color: '#64748b' },
   input: {
     borderWidth: 1,
     borderColor: '#cbd5e1',

@@ -1,0 +1,4 @@
+# Force EAS to run prebuild every time so app.config.js (jsEngine: jsc) is applied.
+# Without this, cached or committed native folders can cause Hermes to be used.
+/android
+/ios

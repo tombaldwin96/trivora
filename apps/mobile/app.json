@@ -1,25 +1,54 @@
 {
   "expo": {
-    "name": "Mahan: The Quiz App",
-    "slug": "mahan",
+    "name": "Trivora: The Quiz App",
+    "slug": "trivora",
     "platforms": [
       "ios",
       "android"
     ],
     "version": "1.0.0",
-    "scheme": "mahan",
+    "scheme": "trivora",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "icon": "./assets/Logo.png",
+    "icon": "./assets/icon.png",
     "splash": {
       "backgroundColor": "#F97316"
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#9146ff"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "jsEngine": "jsc",
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.tombaldwin1996.trivora"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "e5d29a38-341b-4d4b-a6b5-c9b03108742d"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.tombaldwin1996.trivora",
+      "jsEngine": "jsc",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationWhenInUseUsageDescription": "Used to show your approximate area on the live map (e.g. Liverpool). Rounded to ~1 km for privacy."
+      }
     }
   }
 }

@@ -1,14 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet, Alert, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 
+const RESEND_COOLDOWN_SEC = 60;
+
 export default function VerifyOtpScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ email?: string }>();
-  const email = (params.email ?? '').trim().toLowerCase();
+  const emailRaw = Array.isArray(params.email) ? params.email[0] : params.email;
+  const email = (emailRaw ?? '').trim().toLowerCase();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   if (!email) {
     return (
@@ -22,7 +27,7 @@ export default function VerifyOtpScreen() {
   }
 
   async function verify() {
-    const trimmed = code.replace(/\s/g, '');
+    const trimmed = code.split('').filter((c) => c !== ' ' && c !== '\t' && c !== '\n' && c !== '\r').join('');
     if (trimmed.length < 4) {
       Alert.alert('Enter the code', 'Check your email for the 6-digit code we sent.');
       return;
@@ -40,6 +45,29 @@ export default function VerifyOtpScreen() {
     }
     router.replace('/(tabs)');
   }
+
+  async function resendCode() {
+    if (resendLoading || resendCooldown > 0) return;
+    setResendLoading(true);
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: true },
+    });
+    setResendLoading(false);
+    if (error) {
+      Alert.alert('Resend failed', error.message);
+      return;
+    }
+    setResendCooldown(RESEND_COOLDOWN_SEC);
+  }
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const id = setInterval(() => {
+      setResendCooldown((c) => (c <= 1 ? 0 : c - 1));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [resendCooldown]);
 
   return (
     <KeyboardAvoidingView
@@ -73,6 +101,15 @@ export default function VerifyOtpScreen() {
           >
             <Text style={styles.buttonText}>{loading ? 'Verifying…' : 'Sign in'}</Text>
           </Pressable>
+          <Pressable
+            style={[styles.resendButton, (resendLoading || resendCooldown > 0 || loading) && styles.buttonDisabled]}
+            onPress={resendCode}
+            disabled={resendLoading || resendCooldown > 0 || loading}
+          >
+            <Text style={styles.resendButtonText}>
+              {resendLoading ? 'Sending…' : resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : 'Resend code'}
+            </Text>
+          </Pressable>
           <Pressable style={styles.link} onPress={() => router.back()} disabled={loading}>
             <Text style={styles.linkText}>Use a different email</Text>
           </Pressable>
@@ -103,6 +140,8 @@ const styles = StyleSheet.create({
   button: { backgroundColor: '#4f46e5', padding: 16, borderRadius: 12 },
   buttonDisabled: { opacity: 0.6 },
   buttonText: { color: '#fff', fontWeight: '600', textAlign: 'center', fontSize: 16 },
+  resendButton: { marginTop: 12, paddingVertical: 12, paddingHorizontal: 16 },
+  resendButtonText: { color: '#64748b', fontWeight: '600', textAlign: 'center', fontSize: 14 },
   link: { marginTop: 16 },
   linkText: { color: '#4f46e5', textAlign: 'center', fontSize: 14 },
 });

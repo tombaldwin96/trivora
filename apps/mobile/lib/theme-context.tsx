@@ -17,14 +17,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>('light');
 
   useEffect(() => {
-    (async () => {
-      try {
-        const stored = await SecureStore.getItemAsync(THEME_KEY);
-        if (stored === 'dark' || stored === 'light') setThemeState(stored);
-      } catch {
-        // ignore
-      }
-    })();
+    // Defer storage access well past boot to avoid native exception path (iOS crash workaround)
+    const t = setTimeout(() => {
+      SecureStore.getItemAsync(THEME_KEY)
+        .then((stored) => {
+          if (stored === 'dark' || stored === 'light') setThemeState(stored);
+        })
+        .catch(() => {});
+    }, 5000);
+    return () => clearTimeout(t);
   }, []);
 
   const setTheme = useCallback(async (next: Theme) => {
