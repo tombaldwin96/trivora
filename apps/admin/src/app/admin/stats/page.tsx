@@ -11,7 +11,7 @@ export default async function AdminStatsPage() {
   if (!(profile as { is_admin?: boolean } | null)?.is_admin) redirect('/');
 
   // Record current hour snapshot so graph has data (idempotent).
-  await supabase.rpc('record_online_snapshot').catch(() => {});
+  await (supabase as any).rpc('record_online_snapshot').catch(() => {});
 
   const [
     { data: currentOnline },
@@ -21,12 +21,12 @@ export default async function AdminStatsPage() {
     { data: byCountry },
     { data: byUkCity },
   ] = await Promise.all([
-    supabase.rpc('get_admin_current_online'),
-    supabase.rpc('get_admin_online_snapshots', { p_hours: 24 }),
-    supabase.rpc('get_admin_game_mode_plays'),
-    supabase.rpc('get_admin_screen_view_stats'),
-    supabase.rpc('get_admin_connections_by_country'),
-    supabase.rpc('get_admin_connections_by_uk_city'),
+    (supabase as any).rpc('get_admin_current_online'),
+    (supabase as any).rpc('get_admin_online_snapshots', { p_hours: 24 }),
+    (supabase as any).rpc('get_admin_game_mode_plays'),
+    (supabase as any).rpc('get_admin_screen_view_stats'),
+    (supabase as any).rpc('get_admin_connections_by_country'),
+    (supabase as any).rpc('get_admin_connections_by_uk_city'),
   ]);
 
   const current = (currentOnline ?? 0) as number;

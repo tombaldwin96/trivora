@@ -76,13 +76,14 @@ export async function POST(request: Request) {
         setAll() {},
       },
     });
+    const db = supabase as any;
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
+    const { data: profile } = await db.from('profiles').select('is_admin').eq('id', user.id).single();
     if (!(profile as { is_admin?: boolean } | null)?.is_admin) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -131,7 +132,7 @@ export async function POST(request: Request) {
 
     const existingKey = (p: string, cid: string) => p + '\0' + cid;
     const existingSet = new Set<string>();
-    const { data: existingPage } = await supabase.from('questions').select('prompt, category_id').limit(2000);
+    const { data: existingPage } = await db.from('questions').select('prompt, category_id').limit(2000);
     for (const row of (existingPage ?? []) as { prompt: string; category_id: string }[]) {
       existingSet.add(existingKey(row.prompt, row.category_id));
     }
@@ -143,23 +144,25 @@ export async function POST(request: Request) {
       if (!n) return getOrCreateCategory('General');
       if (categoryByName.has(n)) return categoryByName.get(n)!;
       const slug = slugify(n);
-      const { data: existing } = await supabase.from('categories').select('id').eq('slug', slug).maybeSingle();
-      if (existing?.id) {
-        categoryByName.set(n, existing.id);
-        return existing.id;
+      const { data: existing } = await db.from('categories').select('id').eq('slug', slug).maybeSingle();
+      const existingRow = existing as { id: string } | null;
+      if (existingRow?.id) {
+        categoryByName.set(n, existingRow.id);
+        return existingRow.id;
       }
-      const { data: inserted, error } = await supabase
+      const { data: inserted, error } = await db
         .from('categories')
         .insert({ name: n, slug, is_active: true, sort_order: 999 })
         .select('id')
         .single();
       if (error) throw error;
-      if (!inserted?.id) throw new Error('No id for category');
-      categoryByName.set(n, inserted.id);
-      return inserted.id;
+      const insertedRow = inserted as { id: string } | null;
+      if (!insertedRow?.id) throw new Error('No id for category');
+      categoryByName.set(n, insertedRow.id);
+      return insertedRow.id;
     };
 
-    const { data: existingPositions } = await supabase
+    const { data: existingPositions } = await db
       .from('live_quiz_session_questions')
       .select('position')
       .eq('session_id', sessionId)
@@ -214,16 +217,17 @@ export async function POST(request: Request) {
       }
 
       if (existingSet.has(existingKey(prompt, categoryId))) {
-        const { data: existingQ } = await supabase
+        const { data: existingQ } = await db
           .from('questions')
           .select('id')
           .eq('prompt', prompt)
           .eq('category_id', categoryId)
           .maybeSingle();
-        if (existingQ?.id) {
-          const { error: linkErr } = await supabase.from('live_quiz_session_questions').insert({
+        const existingQRow = existingQ as { id: string } | null;
+        if (existingQRow?.id) {
+          const { error: linkErr } = await db.from('live_quiz_session_questions').insert({
             session_id: sessionId,
-            question_id: (existingQ as { id: string }).id,
+            question_id: existingQRow.id,
             position: nextPosition++,
           });
           if (!linkErr) addedToSession++;
@@ -245,7 +249,7 @@ export async function POST(request: Request) {
       if (language.length > 0) insertRow.language = language;
       if (appeal != null) insertRow.appeal = appeal;
 
-      const { data: newQuestion, error: insertErr } = await supabase.from('questions').insert(insertRow).select('id').single();
+      const { data: newQuestion, error: insertErr } = await db.from('questions').insert(insertRow).select('id').single();
       if (insertErr) {
         skipped++;
         continue;
@@ -253,7 +257,7 @@ export async function POST(request: Request) {
       questionsCreated++;
       existingSet.add(existingKey(prompt, categoryId));
 
-      const { error: linkErr } = await supabase.from('live_quiz_session_questions').insert({
+      const { error: linkErr } = await db.from('live_quiz_session_questions').insert({
         session_id: sessionId,
         question_id: (newQuestion as { id: string }).id,
         position: nextPosition++,

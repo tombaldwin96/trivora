@@ -14,8 +14,8 @@ export default async function AdminPushPage() {
     { data: tokenCounts },
     { data: logRows },
   ] = await Promise.all([
-    supabase.rpc('get_admin_push_token_counts'),
-    supabase.rpc('get_admin_push_notification_log', { p_limit: 30 }),
+    (supabase as any).rpc('get_admin_push_token_counts'),
+    (supabase as any).rpc('get_admin_push_notification_log', { p_limit: 30 }),
   ]);
 
   const counts = (tokenCounts ?? []) as { platform: string; token_count: number }[];

@@ -27,7 +27,7 @@ export function OnlineUsersChart({ data }: { data: Snapshot[] }) {
           <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
           <Tooltip
             labelFormatter={(_, payload) => payload?.[0]?.payload?.full ?? ''}
-            formatter={(value: number) => [`${value} users`, 'Online']}
+            formatter={(value: number | undefined) => [`${value ?? 0} users`, 'Online']}
           />
           <Bar dataKey="users" fill="#6366f1" radius={[4, 4, 0, 0]} name="Online" />
         </BarChart>

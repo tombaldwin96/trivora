@@ -1,7 +1,14 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { supabase } from '@/lib/supabase-client';
+import { getSupabase, supabase } from '@/lib/supabase-client';
+import type { Database } from '@trivora/supabase';
+
+/** Typed client; cast to any for live_quiz_* table calls so build passes when Database types lag. */
+const db = getSupabase() as any;
+
+type LeaderboardSnapshotRow = Database['public']['Tables']['live_quiz_leaderboard_snapshot']['Row'];
+type LeaderboardSnapshotInsert = Database['public']['Tables']['live_quiz_leaderboard_snapshot']['Insert'];
 
 type SessionRow = { id: string; title: string; status: string; scheduled_start_at: string | null; created_at: string };
 type StateRow = {
@@ -30,7 +37,7 @@ type LastQuestionAnswerEntry = { user_id: string; username: string | null; is_co
 const EDGE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '') + '/functions/v1';
 
 async function getSession(): Promise<string | null> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await db.auth.getSession();
   return session?.access_token ?? null;
 }
 
@@ -87,7 +94,7 @@ export function LiveQuizControl({ initialSessions }: { initialSessions: SessionR
   const [lastQuestionAnswers, setLastQuestionAnswers] = useState<{ correct: LastQuestionAnswerEntry[]; wrong: LastQuestionAnswerEntry[] } | null>(null);
 
   const refreshSessions = useCallback(async () => {
-    const { data } = await supabase.from('live_quiz_sessions').select('id, title, status, scheduled_start_at, created_at').order('created_at', { ascending: false }).limit(50);
+    const { data } = await db.from('live_quiz_sessions').select('id, title, status, scheduled_start_at, created_at').order('created_at', { ascending: false }).limit(50);
     if (data) setSessions(data as SessionRow[]);
   }, []);
 
@@ -99,11 +106,11 @@ export function LiveQuizControl({ initialSessions }: { initialSessions: SessionR
     setError(null);
     setLoading(true);
     try {
-      const { error: err } = await supabase.from('live_quiz_sessions').delete().eq('id', selectedId);
+      const { error: err } = await db.from('live_quiz_sessions').delete().eq('id', selectedId);
       if (err) throw new Error(err.message);
       setSelectedId(null);
       await refreshSessions();
-      const { data: nextList } = await supabase.from('live_quiz_sessions').select('id').order('created_at', { ascending: false }).limit(1);
+      const { data: nextList } = await db.from('live_quiz_sessions').select('id').order('created_at', { ascending: false }).limit(1);
       if (Array.isArray(nextList) && nextList[0]) setSelectedId((nextList[0] as { id: string }).id);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to delete session');
@@ -121,10 +128,10 @@ export function LiveQuizControl({ initialSessions }: { initialSessions: SessionR
     }
     (async () => {
       const [stateRes, snapshotRes, sqRes, actionsRes] = await Promise.all([
-        supabase.from('live_quiz_state').select('*').eq('session_id', selectedId).single(),
-        supabase.from('live_quiz_leaderboard_snapshot').select('*').eq('session_id', selectedId).single(),
-        supabase.from('live_quiz_session_questions').select('id, session_id, question_id, position').eq('session_id', selectedId).order('position'),
-        supabase.from('live_quiz_admin_actions').select('id, session_id, action_type, payload, created_at').eq('session_id', selectedId).order('created_at', { ascending: false }).limit(30),
+        db.from('live_quiz_state').select('*').eq('session_id', selectedId).single(),
+        db.from('live_quiz_leaderboard_snapshot').select('*').eq('session_id', selectedId).single(),
+        db.from('live_quiz_session_questions').select('id, session_id, question_id, position').eq('session_id', selectedId).order('position'),
+        db.from('live_quiz_admin_actions').select('id, session_id, action_type, payload, created_at').eq('session_id', selectedId).order('created_at', { ascending: false }).limit(30),
       ]);
       const s = stateRes.data as StateRow | null;
       setState(s ?? null);
@@ -137,28 +144,29 @@ export function LiveQuizControl({ initialSessions }: { initialSessions: SessionR
 
   useEffect(() => {
     if (!selectedId) return;
-    const chan = supabase.channel(`live-quiz-${selectedId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'live_quiz_state', filter: `session_id=eq.${selectedId}` }, (payload) => {
-        setState(payload.new as StateRow);
+    const chan = db.channel(`live-quiz-${selectedId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'live_quiz_state', filter: `session_id=eq.${selectedId}` }, (payload: { new: StateRow }) => {
+        setState(payload.new);
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'live_quiz_leaderboard_snapshot', filter: `session_id=eq.${selectedId}` }, (payload) => {
-        setSnapshot(payload.new as SnapshotRow);
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'live_quiz_leaderboard_snapshot', filter: `session_id=eq.${selectedId}` }, (payload: { new: SnapshotRow }) => {
+        setSnapshot(payload.new);
       })
       .subscribe();
-    return () => { supabase.removeChannel(chan); };
+    return () => { db.removeChannel(chan); };
   }, [selectedId]);
 
   const updateLeaderboardSnapshotDirect = useCallback(async (sessionId: string) => {
     const now = new Date().toISOString();
-    const { data: kickedRows } = await supabase.from('live_quiz_kicked').select('user_id').eq('session_id', sessionId);
+    const { data: kickedRows } = await db.from('live_quiz_kicked').select('user_id').eq('session_id', sessionId);
     const kickedIds = new Set(((kickedRows ?? []) as { user_id: string }[]).map((r) => r.user_id));
-    const { data: scoresRaw } = await supabase.from('live_quiz_scores').select('user_id, total_score, correct_count, answered_count').eq('session_id', sessionId).order('total_score', { ascending: false }).order('last_updated_at', { ascending: true }).limit(50);
+    const { data: scoresRaw } = await db.from('live_quiz_scores').select('user_id, total_score, correct_count, answered_count').eq('session_id', sessionId).order('total_score', { ascending: false }).order('last_updated_at', { ascending: true }).limit(50);
     const topScores = (scoresRaw ?? []).filter((r: { user_id: string }) => !kickedIds.has(r.user_id)).slice(0, 25);
     const ids = topScores.map((r: { user_id: string }) => r.user_id);
-    const { data: profiles } = ids.length ? await supabase.from('profiles').select('id, username, avatar_url, country, level').in('id', ids) : { data: [] };
+    const { data: profiles } = ids.length ? await db.from('profiles').select('id, username, avatar_url, country, level').in('id', ids) : { data: [] };
     const profileMap = Object.fromEntries(((profiles ?? []) as { id: string; username: string; avatar_url: string | null; country: string | null; level: number }[]).map((p) => [p.id, p]));
     const topJson = topScores.map((r: { user_id: string; total_score: number; correct_count: number; answered_count: number }, i: number) => ({ rank: i + 1, user_id: r.user_id, username: profileMap[r.user_id]?.username ?? null, avatar_url: profileMap[r.user_id]?.avatar_url ?? null, country: profileMap[r.user_id]?.country ?? null, level: profileMap[r.user_id]?.level ?? 1, total_score: r.total_score, correct_count: r.correct_count, answered_count: r.answered_count }));
-    await supabase.from('live_quiz_leaderboard_snapshot').upsert({ session_id: sessionId, top_json: topJson, updated_at: now }, { onConflict: 'session_id' });
+    const payload: LeaderboardSnapshotInsert = { session_id: sessionId, top_json: topJson as LeaderboardSnapshotRow['top_json'], updated_at: now };
+    await db.from('live_quiz_leaderboard_snapshot').upsert(payload, { onConflict: 'session_id' });
   }, []);
 
   useEffect(() => {
@@ -180,7 +188,7 @@ export function LiveQuizControl({ initialSessions }: { initialSessions: SessionR
   useEffect(() => {
     if (sessionQuestions.length === 0) return;
     const ids = [...new Set(sessionQuestions.map((q) => q.question_id))];
-    supabase.from('questions').select('id, prompt, difficulty, category_id, correct_index, answers_json').in('id', ids).then(({ data }) => {
+    db.from('questions').select('id, prompt, difficulty, category_id, correct_index, answers_json').in('id', ids).then(({ data }: { data: QuestionRow[] | null }) => {
       setQuestionsPool((data as QuestionRow[]) ?? []);
     });
   }, [sessionQuestions]);
@@ -190,7 +198,7 @@ export function LiveQuizControl({ initialSessions }: { initialSessions: SessionR
     setLoading(true);
     setError(null);
     try {
-      await supabase.from('live_quiz_state').update({ video_stream_url: videoUrl || null, updated_at: new Date().toISOString() }).eq('session_id', selectedId);
+      await db.from('live_quiz_state').update({ video_stream_url: videoUrl || null, updated_at: new Date().toISOString() }).eq('session_id', selectedId);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed');
     }
@@ -199,14 +207,14 @@ export function LiveQuizControl({ initialSessions }: { initialSessions: SessionR
 
   const createSession = async () => {
     setError(null);
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await db.auth.getUser();
     if (!user) {
       setError('Not signed in. Refresh the page and log in again.');
       return;
     }
     setLoading(true);
     try {
-      const { data, error: err } = await supabase.from('live_quiz_sessions').insert({ title: 'Live Quiz', status: 'draft', created_by: user.id }).select('id, title, status, scheduled_start_at, created_at').single();
+      const { data, error: err } = await db.from('live_quiz_sessions').insert({ title: 'Live Quiz', status: 'draft', created_by: user.id }).select('id, title, status, scheduled_start_at, created_at').single();
       if (err) throw new Error(err.message);
       setSessions((prev) => [data as SessionRow, ...prev]);
       setSelectedId((data as SessionRow).id);
@@ -218,53 +226,55 @@ export function LiveQuizControl({ initialSessions }: { initialSessions: SessionR
 
   const runActionDirect = async (action: 'countdown' | 'start' | 'next' | 'reveal' | 'end', extra?: Record<string, unknown>) => {
     if (!selectedId) return;
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await db.auth.getUser();
     if (!user) throw new Error('Not signed in');
     const now = new Date().toISOString();
     const minutes = (extra?.minutes as number) ?? 5;
 
     if (action === 'countdown') {
       const endsAt = new Date(Date.now() + minutes * 60 * 1000).toISOString();
-      await supabase.from('live_quiz_state').update({ phase: 'countdown', countdown_ends_at: endsAt, updated_at: now }).eq('session_id', selectedId);
-      await supabase.from('live_quiz_sessions').update({ status: 'scheduled', updated_at: now }).eq('id', selectedId);
-      await supabase.from('live_quiz_admin_actions').insert({ session_id: selectedId, admin_user_id: user.id, action_type: 'COUNTDOWN', payload: { minutes, countdown_ends_at: endsAt } });
+      await db.from('live_quiz_state').update({ phase: 'countdown', countdown_ends_at: endsAt, updated_at: now }).eq('session_id', selectedId);
+      await db.from('live_quiz_sessions').update({ status: 'scheduled', updated_at: now }).eq('id', selectedId);
+      await db.from('live_quiz_admin_actions').insert({ session_id: selectedId, admin_user_id: user.id, action_type: 'COUNTDOWN', payload: { minutes, countdown_ends_at: endsAt } });
     } else if (action === 'start') {
-      await supabase.from('live_quiz_state').update({ phase: 'open', current_question_index: 0, question_started_at: now, countdown_ends_at: null, reveal_started_at: null, updated_at: now }).eq('session_id', selectedId);
-      await supabase.from('live_quiz_sessions').update({ status: 'live', updated_at: now }).eq('id', selectedId);
-      await supabase.from('live_quiz_admin_actions').insert({ session_id: selectedId, admin_user_id: user.id, action_type: 'START', payload: { current_question_index: 0 } });
+      await db.from('live_quiz_state').update({ phase: 'open', current_question_index: 0, question_started_at: now, countdown_ends_at: null, reveal_started_at: null, updated_at: now }).eq('session_id', selectedId);
+      await db.from('live_quiz_sessions').update({ status: 'live', updated_at: now }).eq('id', selectedId);
+      await db.from('live_quiz_admin_actions').insert({ session_id: selectedId, admin_user_id: user.id, action_type: 'START', payload: { current_question_index: 0 } });
     } else if (action === 'next') {
       const nextIndex = (state?.current_question_index ?? -1) + 1;
-      await supabase.from('live_quiz_state').update({ phase: 'open', current_question_index: nextIndex, question_started_at: now, reveal_started_at: null, updated_at: now }).eq('session_id', selectedId);
-      await supabase.from('live_quiz_admin_actions').insert({ session_id: selectedId, admin_user_id: user.id, action_type: 'NEXT', payload: { previous_index: state?.current_question_index ?? 0, new_index: nextIndex } });
+      await db.from('live_quiz_state').update({ phase: 'open', current_question_index: nextIndex, question_started_at: now, reveal_started_at: null, updated_at: now }).eq('session_id', selectedId);
+      await db.from('live_quiz_admin_actions').insert({ session_id: selectedId, admin_user_id: user.id, action_type: 'NEXT', payload: { previous_index: state?.current_question_index ?? 0, new_index: nextIndex } });
     } else if (action === 'reveal') {
-      await supabase.from('live_quiz_state').update({ phase: 'reveal', reveal_started_at: now, updated_at: now }).eq('session_id', selectedId);
-      const { data: kickedRows } = await supabase.from('live_quiz_kicked').select('user_id').eq('session_id', selectedId);
+      await db.from('live_quiz_state').update({ phase: 'reveal', reveal_started_at: now, updated_at: now }).eq('session_id', selectedId);
+      const { data: kickedRows } = await db.from('live_quiz_kicked').select('user_id').eq('session_id', selectedId);
       const kickedIds = new Set(((kickedRows ?? []) as { user_id: string }[]).map((r) => r.user_id));
-      const { data: scoresRaw } = await supabase.from('live_quiz_scores').select('user_id, total_score, correct_count, answered_count').eq('session_id', selectedId).order('total_score', { ascending: false }).order('last_updated_at', { ascending: true }).limit(50);
+      const { data: scoresRaw } = await db.from('live_quiz_scores').select('user_id, total_score, correct_count, answered_count').eq('session_id', selectedId).order('total_score', { ascending: false }).order('last_updated_at', { ascending: true }).limit(50);
       const topScores = (scoresRaw ?? []).filter((r: { user_id: string }) => !kickedIds.has(r.user_id)).slice(0, 25);
       const ids = topScores.map((r: { user_id: string }) => r.user_id);
-      const { data: profiles } = ids.length ? await supabase.from('profiles').select('id, username, avatar_url, country, level').in('id', ids) : { data: [] };
+      const { data: profiles } = ids.length ? await db.from('profiles').select('id, username, avatar_url, country, level').in('id', ids) : { data: [] };
       const profileMap = Object.fromEntries(((profiles ?? []) as { id: string; username: string; avatar_url: string | null; country: string | null; level: number }[]).map((p) => [p.id, p]));
       const topJson = topScores.map((r: { user_id: string; total_score: number; correct_count: number; answered_count: number }, i: number) => ({ rank: i + 1, user_id: r.user_id, username: profileMap[r.user_id]?.username ?? null, avatar_url: profileMap[r.user_id]?.avatar_url ?? null, country: profileMap[r.user_id]?.country ?? null, level: profileMap[r.user_id]?.level ?? 1, total_score: r.total_score, correct_count: r.correct_count, answered_count: r.answered_count }));
-      await supabase.from('live_quiz_leaderboard_snapshot').upsert({ session_id: selectedId, top_json: topJson, updated_at: now }, { onConflict: 'session_id' });
-      await supabase.from('live_quiz_admin_actions').insert({ session_id: selectedId, admin_user_id: user.id, action_type: 'REVEAL', payload: { reveal_started_at: now } });
+      const snapshotPayload: LeaderboardSnapshotInsert = { session_id: selectedId, top_json: topJson as LeaderboardSnapshotRow['top_json'], updated_at: now };
+      await db.from('live_quiz_leaderboard_snapshot').upsert(snapshotPayload, { onConflict: 'session_id' });
+      await db.from('live_quiz_admin_actions').insert({ session_id: selectedId, admin_user_id: user.id, action_type: 'REVEAL', payload: { reveal_started_at: now } });
     } else if (action === 'end') {
       const message = (extra?.message as string) ?? 'Thanks for playing!';
-      await supabase.from('live_quiz_state').update({ phase: 'ended', message, updated_at: now }).eq('session_id', selectedId);
-      const { data: kickedRows } = await supabase.from('live_quiz_kicked').select('user_id').eq('session_id', selectedId);
+      await db.from('live_quiz_state').update({ phase: 'ended', message, updated_at: now }).eq('session_id', selectedId);
+      const { data: kickedRows } = await db.from('live_quiz_kicked').select('user_id').eq('session_id', selectedId);
       const kickedIds = new Set(((kickedRows ?? []) as { user_id: string }[]).map((r) => r.user_id));
-      const { data: scoresRaw } = await supabase.from('live_quiz_scores').select('user_id, total_score, correct_count, answered_count').eq('session_id', selectedId).order('total_score', { ascending: false }).order('last_updated_at', { ascending: true }).limit(50);
+      const { data: scoresRaw } = await db.from('live_quiz_scores').select('user_id, total_score, correct_count, answered_count').eq('session_id', selectedId).order('total_score', { ascending: false }).order('last_updated_at', { ascending: true }).limit(50);
       const topScores = (scoresRaw ?? []).filter((r: { user_id: string }) => !kickedIds.has(r.user_id)).slice(0, 25);
       const ids = topScores.map((r: { user_id: string }) => r.user_id);
-      const { data: profiles } = ids.length ? await supabase.from('profiles').select('id, username, avatar_url, country, level').in('id', ids) : { data: [] };
+      const { data: profiles } = ids.length ? await db.from('profiles').select('id, username, avatar_url, country, level').in('id', ids) : { data: [] };
       const profileMap = Object.fromEntries(((profiles ?? []) as { id: string; username: string; avatar_url: string | null; country: string | null; level: number }[]).map((p) => [p.id, p]));
       const topJson = topScores.map((r: { user_id: string; total_score: number; correct_count: number; answered_count: number }, i: number) => ({ rank: i + 1, user_id: r.user_id, username: profileMap[r.user_id]?.username ?? null, avatar_url: profileMap[r.user_id]?.avatar_url ?? null, country: profileMap[r.user_id]?.country ?? null, level: profileMap[r.user_id]?.level ?? 1, total_score: r.total_score, correct_count: r.correct_count, answered_count: r.answered_count }));
-      await supabase.from('live_quiz_leaderboard_snapshot').upsert({ session_id: selectedId, top_json: topJson, updated_at: now }, { onConflict: 'session_id' });
-      await supabase.from('live_quiz_sessions').update({ status: 'ended', updated_at: now }).eq('id', selectedId);
-      await supabase.from('live_quiz_admin_actions').insert({ session_id: selectedId, admin_user_id: user.id, action_type: 'END', payload: { message } });
-      await supabase.rpc('record_live_quiz_winner', { p_session_id: selectedId }).catch(() => null);
+      const endSnapshotPayload: LeaderboardSnapshotInsert = { session_id: selectedId, top_json: topJson as LeaderboardSnapshotRow['top_json'], updated_at: now };
+      await db.from('live_quiz_leaderboard_snapshot').upsert(endSnapshotPayload, { onConflict: 'session_id' });
+      await db.from('live_quiz_sessions').update({ status: 'ended', updated_at: now }).eq('id', selectedId);
+      await db.from('live_quiz_admin_actions').insert({ session_id: selectedId, admin_user_id: user.id, action_type: 'END', payload: { message } });
+      await (supabase as any).rpc('record_live_quiz_winner', { p_session_id: selectedId }).catch(() => null);
     }
-    const { data: actionsData } = await supabase.from('live_quiz_admin_actions').select('id, session_id, action_type, payload, created_at').eq('session_id', selectedId).order('created_at', { ascending: false }).limit(30);
+    const { data: actionsData } = await db.from('live_quiz_admin_actions').select('id, session_id, action_type, payload, created_at').eq('session_id', selectedId).order('created_at', { ascending: false }).limit(30);
     if (actionsData) setActions(actionsData as ActionRow[]);
   };
 
@@ -277,8 +287,8 @@ export function LiveQuizControl({ initialSessions }: { initialSessions: SessionR
       const name = action === 'countdown' ? 'live-quiz-admin-countdown' : action === 'start' ? 'live-quiz-admin-start' : action === 'next' ? 'live-quiz-admin-next' : action === 'reveal' ? 'live-quiz-admin-reveal' : 'live-quiz-admin-end';
       await invokeAdmin(name, { session_id: selectedId, ...extra });
       const [stateRes, actionsRes] = await Promise.all([
-        supabase.from('live_quiz_state').select('*').eq('session_id', selectedId).single(),
-        supabase.from('live_quiz_admin_actions').select('id, session_id, action_type, payload, created_at').eq('session_id', selectedId).order('created_at', { ascending: false }).limit(30),
+        db.from('live_quiz_state').select('*').eq('session_id', selectedId).single(),
+        db.from('live_quiz_admin_actions').select('id, session_id, action_type, payload, created_at').eq('session_id', selectedId).order('created_at', { ascending: false }).limit(30),
       ]);
       if (stateRes.data) setState(stateRes.data as StateRow);
       if (actionsRes.data) setActions(actionsRes.data as ActionRow[]);
@@ -290,7 +300,7 @@ export function LiveQuizControl({ initialSessions }: { initialSessions: SessionR
           await runActionDirect(action, extra);
           setError(null);
           if (action === 'countdown' || action === 'start') {
-            const stateRes = await supabase.from('live_quiz_state').select('*').eq('session_id', selectedId).single();
+            const stateRes = await db.from('live_quiz_state').select('*').eq('session_id', selectedId).single();
             if (stateRes.data) setState(stateRes.data as StateRow);
           }
         } catch (directErr) {
@@ -299,7 +309,7 @@ export function LiveQuizControl({ initialSessions }: { initialSessions: SessionR
       } else {
         setError(e instanceof Error ? e.message : 'Failed');
       }
-      const { data: actionsData } = await supabase.from('live_quiz_admin_actions').select('id, session_id, action_type, payload, created_at').eq('session_id', selectedId).order('created_at', { ascending: false }).limit(30);
+      const { data: actionsData } = await db.from('live_quiz_admin_actions').select('id, session_id, action_type, payload, created_at').eq('session_id', selectedId).order('created_at', { ascending: false }).limit(30);
       if (actionsData) setActions(actionsData as ActionRow[]);
     }
     setLoading(false);
@@ -341,7 +351,7 @@ export function LiveQuizControl({ initialSessions }: { initialSessions: SessionR
         return;
       }
       const ids = rows.map((r) => r.user_id);
-      const { data: profiles } = await supabase.from('profiles').select('id, username').in('id', ids);
+      const { data: profiles } = await db.from('profiles').select('id, username').in('id', ids);
       const profileMap = Object.fromEntries(
         ((profiles ?? []) as { id: string; username: string | null }[]).map((p) => [p.id, p.username ?? '—'])
       );
@@ -388,7 +398,7 @@ export function LiveQuizControl({ initialSessions }: { initialSessions: SessionR
       }
       const userIds = [...new Set((answers as { user_id: string }[]).map((a) => a.user_id))];
       const { data: profiles } = userIds.length > 0
-        ? await supabase.from('profiles').select('id, username').in('id', userIds)
+        ? await db.from('profiles').select('id, username').in('id', userIds)
         : { data: [] };
       const profileMap = Object.fromEntries(
         ((profiles ?? []) as { id: string; username: string | null }[]).map((p) => [p.id, p.username ?? '—'])
@@ -407,11 +417,11 @@ export function LiveQuizControl({ initialSessions }: { initialSessions: SessionR
   const searchQuestions = useCallback(async () => {
     const term = questionSearch.trim().slice(0, 100);
     if (!term) {
-      const { data } = await supabase.from('questions').select('id, prompt, difficulty, category_id').eq('is_active', true).order('created_at', { ascending: false }).limit(50);
+      const { data } = await db.from('questions').select('id, prompt, difficulty, category_id').eq('is_active', true).order('created_at', { ascending: false }).limit(50);
       setSearchResults((data as QuestionRow[]) ?? []);
       return;
     }
-    const { data } = await supabase.from('questions').select('id, prompt, difficulty, category_id').eq('is_active', true).ilike('prompt', `%${term}%`).limit(30);
+    const { data } = await db.from('questions').select('id, prompt, difficulty, category_id').eq('is_active', true).ilike('prompt', `%${term}%`).limit(30);
     setSearchResults((data as QuestionRow[]) ?? []);
   }, [questionSearch]);
 
@@ -450,7 +460,7 @@ export function LiveQuizControl({ initialSessions }: { initialSessions: SessionR
   const openBrowseModal = useCallback(() => {
     setBrowseModalOpen(true);
     setBrowseFilters({ difficulty: '', category_id: '', sub_category: '', language: '', appeal: '' });
-    supabase.from('categories').select('id, name, slug').eq('is_active', true).order('sort_order').order('name').then(({ data }) => {
+    db.from('categories').select('id, name, slug').eq('is_active', true).order('sort_order').order('name').then(({ data }: { data: CategoryRow[] | null }) => {
       setCategories((data as CategoryRow[]) ?? []);
     });
     setBrowseResults([]);
@@ -467,9 +477,9 @@ export function LiveQuizControl({ initialSessions }: { initialSessions: SessionR
     setError(null);
     try {
       const maxPos = sessionQuestions.length === 0 ? -1 : Math.max(...sessionQuestions.map((q) => q.position));
-      const { error: err } = await supabase.from('live_quiz_session_questions').insert({ session_id: selectedId, question_id: questionId, position: maxPos + 1 });
+      const { error: err } = await db.from('live_quiz_session_questions').insert({ session_id: selectedId, question_id: questionId, position: maxPos + 1 });
       if (err) throw new Error(err.message);
-      const { data } = await supabase.from('live_quiz_session_questions').select('id, session_id, question_id, position').eq('session_id', selectedId).order('position');
+      const { data } = await db.from('live_quiz_session_questions').select('id, session_id, question_id, position').eq('session_id', selectedId).order('position');
       setSessionQuestions((data as SessionQuestionRow[]) ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed');
@@ -481,8 +491,8 @@ export function LiveQuizControl({ initialSessions }: { initialSessions: SessionR
     if (!selectedId) return;
     setError(null);
     try {
-      await supabase.from('live_quiz_session_questions').delete().eq('id', sessionQuestionId);
-      const { data } = await supabase.from('live_quiz_session_questions').select('id, session_id, question_id, position').eq('session_id', selectedId).order('position');
+      await db.from('live_quiz_session_questions').delete().eq('id', sessionQuestionId);
+      const { data } = await db.from('live_quiz_session_questions').select('id, session_id, question_id, position').eq('session_id', selectedId).order('position');
       setSessionQuestions((data as SessionQuestionRow[]) ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed');
@@ -492,7 +502,7 @@ export function LiveQuizControl({ initialSessions }: { initialSessions: SessionR
   const setQuestionCorrectIndex = async (questionId: string, correctIndex: number) => {
     setError(null);
     try {
-      const { error: err } = await supabase.from('questions').update({ correct_index: correctIndex }).eq('id', questionId);
+      const { error: err } = await db.from('questions').update({ correct_index: correctIndex }).eq('id', questionId);
       if (err) throw new Error(err.message);
       setQuestionsPool((prev) => prev.map((q) => (q.id === questionId ? { ...q, correct_index: correctIndex } : q)));
     } catch (e) {
@@ -521,7 +531,7 @@ export function LiveQuizControl({ initialSessions }: { initialSessions: SessionR
       }
       setUploadResult(data);
       setUploadFile(null);
-      const { data: sq } = await supabase.from('live_quiz_session_questions').select('id, session_id, question_id, position').eq('session_id', selectedId).order('position');
+      const { data: sq } = await db.from('live_quiz_session_questions').select('id, session_id, question_id, position').eq('session_id', selectedId).order('position');
       setSessionQuestions((sq as SessionQuestionRow[]) ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Upload failed');
@@ -529,7 +539,8 @@ export function LiveQuizControl({ initialSessions }: { initialSessions: SessionR
     setUploading(false);
   };
 
-  const topList = Array.isArray(snapshot?.top_json) ? snapshot.top_json : [];
+  type TopListEntry = { rank?: number; user_id?: string; username?: string; total_score?: number; live_quiz_win_count?: number };
+  const topList: TopListEntry[] = Array.isArray(snapshot?.top_json) ? (snapshot.top_json as TopListEntry[]) : [];
   const countdownEndsAt = state?.countdown_ends_at ? new Date(state.countdown_ends_at).getTime() : null;
 
   const triggerMahanOnViewers = async () => {
@@ -537,7 +548,7 @@ export function LiveQuizControl({ initialSessions }: { initialSessions: SessionR
     setError(null);
     try {
       const now = new Date().toISOString();
-      const { error: err } = await supabase.from('live_quiz_state').update({ mahan_sweep_at: now, updated_at: now }).eq('session_id', selectedId);
+      const { error: err } = await db.from('live_quiz_state').update({ mahan_sweep_at: now, updated_at: now }).eq('session_id', selectedId);
       if (err) throw new Error(err.message);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to trigger Mahan');
@@ -551,7 +562,7 @@ export function LiveQuizControl({ initialSessions }: { initialSessions: SessionR
     setState((prev) => (prev ? { ...prev, show_leaderboard_until, updated_at: new Date().toISOString() } : null));
     try {
       const now = new Date().toISOString();
-      const { error: err } = await supabase.from('live_quiz_state').update({ show_leaderboard_until, updated_at: now }).eq('session_id', selectedId);
+      const { error: err } = await db.from('live_quiz_state').update({ show_leaderboard_until, updated_at: now }).eq('session_id', selectedId);
       if (err) throw new Error(err.message);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to update');
@@ -564,13 +575,13 @@ export function LiveQuizControl({ initialSessions }: { initialSessions: SessionR
     if (!window.confirm(`Remove this user from the session? They will be removed from the leaderboard and cannot submit more answers.`)) return;
     setError(null);
     try {
-      const { data: { user: adminUser } } = await supabase.auth.getUser();
+      const { data: { user: adminUser } } = await db.auth.getUser();
       if (!adminUser) throw new Error('Not signed in');
-      const kickRes = await supabase.from('live_quiz_kicked').insert({ session_id: selectedId, user_id: userId, kicked_by: adminUser.id });
+      const kickRes = await db.from('live_quiz_kicked').insert({ session_id: selectedId, user_id: userId, kicked_by: adminUser.id });
       if (kickRes.error && kickRes.error.code !== '23505') throw new Error(kickRes.error.message);
-      await supabase.from('live_quiz_scores').delete().eq('session_id', selectedId).eq('user_id', userId);
+      await db.from('live_quiz_scores').delete().eq('session_id', selectedId).eq('user_id', userId);
       await updateLeaderboardSnapshotDirect(selectedId);
-      const { data: snap } = await supabase.from('live_quiz_leaderboard_snapshot').select('top_json').eq('session_id', selectedId).single();
+      const { data: snap } = await db.from('live_quiz_leaderboard_snapshot').select('top_json').eq('session_id', selectedId).single();
       if (snap) setSnapshot(snap as SnapshotRow);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to kick user');
@@ -778,7 +789,7 @@ export function LiveQuizControl({ initialSessions }: { initialSessions: SessionR
         <section className="rounded-xl bg-slate-900/80 border border-slate-700 p-4">
           <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-3">Leaderboard (top 25)</h2>
           <div className="max-h-64 overflow-y-auto space-y-1">
-            {topList.slice(0, 25).map((entry: { rank?: number; user_id?: string; username?: string; total_score?: number; live_quiz_win_count?: number }, i) => (
+            {topList.slice(0, 25).map((entry, i) => (
               <div key={entry.user_id ?? i} className="flex justify-between items-center gap-2 text-sm py-1 border-b border-slate-700/50">
                 <span className="text-slate-300">#{entry.rank ?? i + 1} {entry.username ?? '—'}</span>
                 <span className="text-violet-300 font-medium">{entry.total_score ?? 0} pts</span>

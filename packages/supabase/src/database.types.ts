@@ -494,11 +494,115 @@ export interface Database {
         };
         Update: Partial<Database['public']['Tables']['referral_signups']['Insert']>;
       };
+      live_quiz_leaderboard_snapshot: {
+        Row: {
+          session_id: string;
+          top_json: Json;
+          updated_at: string;
+        };
+        Insert: {
+          session_id: string;
+          top_json?: Json;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['live_quiz_leaderboard_snapshot']['Insert']>;
+      };
+      live_quiz_sessions: {
+        Row: {
+          id: string;
+          title: string;
+          status: string;
+          created_by: string;
+          scheduled_start_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['live_quiz_sessions']['Row'], 'id' | 'created_at' | 'updated_at'> & { id?: string; created_at?: string; updated_at?: string };
+        Update: Partial<Database['public']['Tables']['live_quiz_sessions']['Insert']>;
+      };
+      live_quiz_state: {
+        Row: {
+          session_id: string;
+          phase: string;
+          countdown_ends_at: string | null;
+          current_question_index: number;
+          question_started_at: string | null;
+          question_duration_ms: number;
+          reveal_started_at: string | null;
+          message: string | null;
+          video_stream_url: string | null;
+          updated_at: string;
+          siren_played_at: string | null;
+          show_leaderboard_until: string | null;
+          mahan_sweep_at: string | null;
+        };
+        Insert: Omit<Database['public']['Tables']['live_quiz_state']['Row'], 'updated_at'> & { updated_at?: string };
+        Update: Partial<Database['public']['Tables']['live_quiz_state']['Insert']>;
+      };
+      live_quiz_session_questions: {
+        Row: { id: string; session_id: string; question_id: string; position: number };
+        Insert: Omit<Database['public']['Tables']['live_quiz_session_questions']['Row'], 'id'> & { id?: string };
+        Update: Partial<Database['public']['Tables']['live_quiz_session_questions']['Insert']>;
+      };
+      live_quiz_answers: {
+        Row: {
+          id: string;
+          session_id: string;
+          question_id: string;
+          user_id: string;
+          answer_index: number;
+          elapsed_ms: number;
+          is_correct: boolean;
+          score_awarded: number;
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['live_quiz_answers']['Row'], 'id' | 'created_at'> & { id?: string; created_at?: string };
+        Update: Partial<Database['public']['Tables']['live_quiz_answers']['Insert']>;
+      };
+      live_quiz_scores: {
+        Row: {
+          id: string;
+          session_id: string;
+          user_id: string;
+          total_score: number;
+          correct_count: number;
+          answered_count: number;
+          last_updated_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['live_quiz_scores']['Row'], 'id' | 'last_updated_at'> & { id?: string; last_updated_at?: string };
+        Update: Partial<Database['public']['Tables']['live_quiz_scores']['Insert']>;
+      };
+      live_quiz_admin_actions: {
+        Row: {
+          id: string;
+          session_id: string;
+          admin_user_id: string;
+          action_type: string;
+          payload: Json | null;
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['live_quiz_admin_actions']['Row'], 'id' | 'created_at'> & { id?: string; created_at?: string };
+        Update: Partial<Database['public']['Tables']['live_quiz_admin_actions']['Insert']>;
+      };
+      live_quiz_kicked: {
+        Row: {
+          session_id: string;
+          user_id: string;
+          kicked_at: string;
+          kicked_by: string;
+        };
+        Insert: Omit<Database['public']['Tables']['live_quiz_kicked']['Row'], 'kicked_at'> & { kicked_at?: string };
+        Update: Partial<Database['public']['Tables']['live_quiz_kicked']['Insert']>;
+      };
     };
     Functions: {
       apply_referral: {
         Args: { p_referral_code: string };
         Returns: Json;
+      };
+      record_live_quiz_winner: {
+        Args: { p_session_id: string };
+        Returns: unknown;
       };
     };
     Enums: {

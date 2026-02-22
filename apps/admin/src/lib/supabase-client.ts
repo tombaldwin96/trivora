@@ -3,7 +3,7 @@ import type { Database } from '@trivora/supabase';
 
 let _client: ReturnType<typeof createBrowserClient<Database>> | null = null;
 
-function getSupabase(): ReturnType<typeof createBrowserClient<Database>> {
+export function getSupabase(): ReturnType<typeof createBrowserClient<Database>> {
   if (_client) return _client;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
