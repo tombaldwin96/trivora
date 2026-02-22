@@ -76,8 +76,14 @@ export async function logoutAction() {
 
 export async function getAdminSession(): Promise<{ loggedIn: boolean; username?: string }> {
   const cookieStore = await cookies();
-  const token = cookieStore.get(COOKIE_NAME)?.value;
+  let token = cookieStore.get(COOKIE_NAME)?.value;
   if (!token) return { loggedIn: false };
+
+  try {
+    token = decodeURIComponent(token);
+  } catch {
+    return { loggedIn: false };
+  }
 
   const [payload, sig] = token.split('.');
   if (!payload || !sig) return { loggedIn: false };
