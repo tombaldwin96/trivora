@@ -1,19 +1,24 @@
 {
-  "name": "mahan",
+  "name": "trivora",
   "private": true,
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "dev:web": "pnpm --filter @mahan/web dev",
-    "dev:admin": "pnpm --filter @mahan/admin dev",
-    "dev:mobile": "pnpm --filter @mahan/mobile dev",
+    "dev:web": "pnpm --filter @trivora/web dev",
+    "dev:admin": "pnpm --filter @trivora/admin dev",
+    "dev:mobile": "pnpm --filter @trivora/mobile dev",
+    "build:ios": "pnpm --filter @trivora/mobile exec eas build --platform ios --profile production",
+    "submit:ios": "pnpm --filter @trivora/mobile exec eas submit --platform ios --profile production --latest",
+    "build:ios:submit": "pnpm run build:ios && pnpm run submit:ios",
     "lint": "turbo run lint",
-    "db:migrate": "pnpm --filter @mahan/supabase db:migrate",
-    "db:seed": "pnpm --filter @mahan/supabase db:seed",
-    "db:reset": "pnpm --filter @mahan/supabase db:reset",
-    "supabase:functions": "pnpm --filter @mahan/supabase supabase:functions"
+    "db:migrate": "pnpm --filter @trivora/supabase db:migrate",
+    "db:seed": "pnpm --filter @trivora/supabase db:seed",
+    "db:reset": "pnpm --filter @trivora/supabase db:reset",
+    "supabase:functions": "pnpm --filter @trivora/supabase supabase:functions",
+    "functions:deploy": "supabase functions deploy start-matchmaking"
   },
   "devDependencies": {
+    "supabase": "^2.9.4",
     "turbo": "^2.3.0",
     "typescript": "~5.6.0"
   },
