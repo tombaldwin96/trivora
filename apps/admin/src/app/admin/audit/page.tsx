@@ -5,9 +5,9 @@ import { createAdminSupabase } from '@/lib/supabase';
 export default async function AdminAuditPage() {
   const supabase = await createAdminSupabase();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+  if (!user) redirect('/');
   const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
-  if (!(profile as { is_admin?: boolean } | null)?.is_admin) redirect('/login');
+  if (!(profile as { is_admin?: boolean } | null)?.is_admin) redirect('/');
 
   const { data: logsData } = await supabase.from('audit_logs').select('id, action, entity_type, entity_id, created_at').order('created_at', { ascending: false }).limit(100);
   type LogRow = { id: string; action: string; entity_type: string; entity_id: string | null; created_at: string };

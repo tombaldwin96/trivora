@@ -1,5 +1,5 @@
 {
-  "name": "@mahan/admin",
+  "name": "@trivora/admin",
   "version": "0.0.1",
   "private": true,
   "scripts": {
@@ -10,13 +10,15 @@
     "create-admin-user": "tsx scripts/create-admin-user.ts"
   },
   "dependencies": {
-    "@mahan/core": "workspace:*",
-    "@mahan/supabase": "workspace:*",
     "@supabase/ssr": "^0.5.0",
     "@supabase/supabase-js": "^2.47.0",
+    "@trivora/core": "workspace:*",
+    "@trivora/supabase": "workspace:*",
     "next": "14.2.18",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "recharts": "^3.7.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

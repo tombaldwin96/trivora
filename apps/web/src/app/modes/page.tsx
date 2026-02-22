@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Card, Button } from '@mahan/ui';
+import { Card, Button } from '@trivora/ui';
 
 export default function ModesPage() {
   return (

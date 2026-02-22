@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Mahan – Quiz & Compete',
+  title: 'Trivora – Quiz & Compete',
   description: 'Daily quiz, 1v1 matches, live quizzes, and more.',
 };
 

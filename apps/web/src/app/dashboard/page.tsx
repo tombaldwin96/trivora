@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { Card, Button } from '@mahan/ui';
+import { Card, Button } from '@trivora/ui';
 
 export default async function DashboardPage() {
   const supabase = await createServerSupabaseClient();
@@ -43,6 +43,14 @@ export default async function DashboardPage() {
             <p className="text-slate-500 text-sm mt-1">Global · Friends · Season</p>
             <Button variant="ghost" size="sm" className="mt-4">View</Button>
           </Card>
+        </Link>
+      </div>
+      <div className="mt-6 pt-6 border-t border-slate-200">
+        <Link
+          href="/contact"
+          className="block text-center text-sm text-slate-500 hover:text-brand-600 transition"
+        >
+          Do you have an idea? Tell us here.
         </Link>
       </div>
     </div>

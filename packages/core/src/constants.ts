@@ -1,4 +1,4 @@
-export const APP_NAME = 'Mahan';
+export const APP_NAME = 'Trivora';
 export const DEFAULT_AVATAR_PATH = 'avatars/default.png';
 
 export const STREAK_FREEZE_SUBSCRIBER = true;

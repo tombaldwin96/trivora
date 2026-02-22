@@ -1,4 +1,4 @@
-# Mahan
+# Trivora
 
 AAA-quality cross-platform quiz subscription product: daily quiz, 1v1 divisions, live quizzes, teams, tournaments (scaffolded). Monorepo with **iOS/Android (Expo)**, **Web (Next.js)**, **Admin (Next.js)**, shared **Supabase** backend.
 
@@ -7,7 +7,7 @@ AAA-quality cross-platform quiz subscription product: daily quiz, 1v1 divisions,
 ## Folder structure
 
 ```
-Mahan/
+Trivora/
 ├── apps/
 │   ├── mobile/          # Expo React Native (iOS/Android)
 │   ├── web/              # Next.js App Router (consumer web)
@@ -42,7 +42,7 @@ Mahan/
 3. Optional: enable **Email** auth in Authentication → Providers.
 4. **Social auth (mobile):** To use “Sign in with Apple” and “Sign in with Facebook” in the Expo app:
    - In Supabase Dashboard go to **Authentication → Providers** and enable **Apple** and **Facebook**. Configure each with your Apple Service ID / Facebook App ID and secrets as per [Supabase Apple](https://supabase.com/docs/guides/auth/social-login/auth-apple) and [Supabase Facebook](https://supabase.com/docs/guides/auth/social-login/auth-facebook) docs.
-   - In **Authentication → URL Configuration** add your app’s redirect URL to **Redirect URLs**. For the Expo app this is the scheme + path, e.g. `mahan://auth/callback` (or run the app and check the console for the exact redirect URL used).
+   - In **Authentication → URL Configuration** add your app’s redirect URL to **Redirect URLs**. For the Expo app this is the scheme + path, e.g. `trivora://auth/callback` (or run the app and check the console for the exact redirect URL used).
 
 ---
 
@@ -71,8 +71,8 @@ Create `.env.local` (or `.env`) where needed:
 **Supabase Edge Functions** (in Supabase Dashboard → Edge Functions → secrets or `.env` in supabase/)
 
 - `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`  
-- `MAHAN_APP_DEEP_LINK_BASE` = e.g. `mahan://invite`  
-- `MAHAN_WEB_URL` = e.g. `https://yourapp.com` (for invite web fallback)  
+- `TRIVORA_APP_DEEP_LINK_BASE` = e.g. `trivora://invite`  
+- `TRIVORA_WEB_URL` = e.g. `https://yourapp.com` (for invite web fallback)  
 - `CRON_SECRET` = optional, for leaderboard-rollups cron
 
 ---
@@ -138,21 +138,21 @@ UPDATE public.profiles SET is_admin = TRUE WHERE id = (SELECT id FROM auth.users
 
 ```bash
 pnpm dev:web
-# or: pnpm --filter @mahan/web dev
+# or: pnpm --filter @trivora/web dev
 ```
 
 **Admin (port 3001)**
 
 ```bash
 pnpm dev:admin
-# or: pnpm --filter @mahan/admin dev
+# or: pnpm --filter @trivora/admin dev
 ```
 
 **Mobile (Expo)**
 
 ```bash
 pnpm dev:mobile
-# or: pnpm --filter @mahan/mobile dev
+# or: pnpm --filter @trivora/mobile dev
 ```
 
 Then open iOS simulator, Android emulator, or scan QR with Expo Go.

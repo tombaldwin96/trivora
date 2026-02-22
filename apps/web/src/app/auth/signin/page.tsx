@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
-import { Button, Card } from '@mahan/ui';
+import { Button, Card } from '@trivora/ui';
 import { trackEvent } from '@/lib/analytics';
 
 export default function SignInPage() {
@@ -18,13 +18,22 @@ export default function SignInPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+    const { data: { user }, error: err } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (err) {
       setError(err.message);
       return;
     }
     trackEvent('sign_up'); // reuse for session
+    if (user) {
+      const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
+      const isAdmin = (profile as { is_admin?: boolean } | null)?.is_admin === true;
+      const adminUrl = process.env.NEXT_PUBLIC_ADMIN_URL;
+      if (isAdmin && adminUrl) {
+        window.location.href = adminUrl;
+        return;
+      }
+    }
     router.push('/dashboard');
     router.refresh();
   }

@@ -1,5 +1,5 @@
 import { supabase } from './supabase/client';
-import type { AnalyticsEventName } from '@mahan/core';
+import type { AnalyticsEventName } from '@trivora/core';
 
 export function trackEvent(
   name: AnalyticsEventName | string,

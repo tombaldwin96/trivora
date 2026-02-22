@@ -1,5 +1,5 @@
 {
-  "name": "@mahan/web",
+  "name": "@trivora/web",
   "version": "0.0.1",
   "private": true,
   "scripts": {
@@ -9,15 +9,16 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@mahan/core": "workspace:*",
-    "@mahan/supabase": "workspace:*",
-    "@mahan/ui": "workspace:*",
+    "@trivora/core": "workspace:*",
+    "@trivora/supabase": "workspace:*",
+    "@trivora/ui": "workspace:*",
     "@radix-ui/react-slot": "^1.1.0",
     "@supabase/ssr": "^0.5.0",
     "@supabase/supabase-js": "^2.47.0",
     "next": "14.2.18",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "livekit-client": "^2.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

@@ -70,9 +70,29 @@ Deno.serve(async (req) => {
     }
 
     const mode = invite.mode ?? '1v1';
-    let matchId: string | null = null;
+    let matchId: string | null = invite.match_id ?? null;
 
-    if (mode === '1v1') {
+    // If invite already has a session (match_id), join that match instead of creating one.
+    if (mode === '1v1' && invite.match_id) {
+      const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      const admin = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        serviceKey ?? '',
+      );
+      const { error: updateErr } = await admin
+        .from('matches_1v1')
+        .update({ player_b: user.id, updated_at: new Date().toISOString() })
+        .eq('id', invite.match_id)
+        .is('player_b', null)
+        .eq('status', 'pending');
+      if (updateErr) {
+        return new Response(JSON.stringify({ error: 'Match no longer available' }), {
+          status: 409,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      matchId = invite.match_id;
+    } else if (mode === '1v1' && !invite.match_id) {
       const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
       const admin = createClient(
         Deno.env.get('SUPABASE_URL') ?? '',

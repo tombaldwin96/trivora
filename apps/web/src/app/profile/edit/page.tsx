@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
-import { Button, Card } from '@mahan/ui';
+import { Button, Card } from '@trivora/ui';
 
 export default function ProfileEditPage() {
   const router = useRouter();

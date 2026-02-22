@@ -1,5 +1,5 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { Card, Button } from '@mahan/ui';
+import { Card, Button } from '@trivora/ui';
 import Link from 'next/link';
 
 export default async function LiveQuizPage() {

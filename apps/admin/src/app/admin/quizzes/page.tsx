@@ -5,9 +5,9 @@ import { createAdminSupabase } from '@/lib/supabase';
 export default async function AdminQuizzesPage() {
   const supabase = await createAdminSupabase();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+  if (!user) redirect('/');
   const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
-  if (!(profile as { is_admin?: boolean } | null)?.is_admin) redirect('/login');
+  if (!(profile as { is_admin?: boolean } | null)?.is_admin) redirect('/');
 
   const { data: quizzesData } = await supabase.from('quizzes').select('id, type, title, status, published_at').order('created_at', { ascending: false }).limit(50);
   type QuizRow = { id: string; type: string; title: string; status: string; published_at: string | null };

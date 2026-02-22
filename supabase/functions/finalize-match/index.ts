@@ -46,6 +46,12 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+    if (!match.player_b) {
+      return new Response(JSON.stringify({ error: 'Match has no second player yet' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     const scoreA = match.points_a ?? 0;
     const scoreB = match.points_b ?? 0;

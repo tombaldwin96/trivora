@@ -1,8 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { Card } from '@mahan/ui';
+import { Card } from '@trivora/ui';
 import Link from 'next/link';
-import { DIVISION_NAMES } from '@mahan/core';
 
 export default async function ProfilePage() {
   const supabase = await createServerSupabaseClient();
@@ -14,8 +13,8 @@ export default async function ProfilePage() {
   const profile = profileData as ProfileRow | null;
   const { data: subData } = await supabase.from('subscriptions').select('status').eq('user_id', user.id).single();
   const sub = subData as { status?: string } | null;
-  const { data: standingData } = await supabase.from('standings').select('division, points, games_played, wins, draws, losses').eq('user_id', user.id).order('updated_at', { ascending: false }).limit(1).maybeSingle();
-  const standing = standingData as { division: number; points: number; games_played: number; wins: number; draws: number; losses: number } | null;
+  const { data: standingData } = await supabase.from('standings').select('points, games_played, wins, draws, losses').eq('user_id', user.id).order('updated_at', { ascending: false }).limit(1).maybeSingle();
+  const standing = standingData as { points: number; games_played: number; wins: number; draws: number; losses: number } | null;
 
   return (
     <div className="max-w-lg mx-auto">
@@ -38,7 +37,7 @@ export default async function ProfilePage() {
         {standing && (
           <div className="mt-4 pt-4 border-t border-slate-100">
             <h3 className="font-medium">1v1 Season</h3>
-            <p className="text-sm">Division {standing.division} ({DIVISION_NAMES[standing.division] ?? 'Starter'}) · {standing.points} pts</p>
+            <p className="text-sm">{standing.points} pts</p>
             <p className="text-slate-500 text-xs mt-1">{standing.wins}W / {standing.draws}D / {standing.losses}L</p>
           </div>
         )}

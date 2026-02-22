@@ -102,7 +102,7 @@ export default function PastQuizzesScreen() {
             return (
               <Pressable
                 style={styles.row}
-                onPress={() => router.push({ pathname: '/quiz/daily/result', params: { attempt_id: item.id } })}
+                onPress={() => router.push('/(tabs)')}
               >
                 <Text style={styles.rowDate}>{formatDate(item.started_at)}</Text>
                 <Text style={styles.rowResult}>{resultLabel}</Text>

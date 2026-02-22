@@ -1,4 +1,4 @@
--- Mahan: initial schema
+-- Trivora: initial schema
 -- Extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";

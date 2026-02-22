@@ -1,5 +1,5 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { Card } from '@mahan/ui';
+import { Card } from '@trivora/ui';
 import Link from 'next/link';
 
 export default async function LeaderboardsPage() {
@@ -16,12 +16,16 @@ export default async function LeaderboardsPage() {
   type DailyRow = { user_id: string; score: number; rank: number };
   const dailyRows = (daily ?? []) as DailyRow[];
   const userIds = dailyRows.map((r) => r.user_id).filter(Boolean);
-  type ProfileRow = { id: string; username?: string; display_name?: string };
+  type ProfileRow = { id: string; username?: string; display_name?: string; live_quiz_win_count?: number };
   const { data: profilesData } = userIds.length
-    ? await supabase.from('profiles').select('id, username, display_name').in('id', userIds)
+    ? await supabase.from('profiles').select('id, username, display_name, live_quiz_win_count').in('id', userIds)
     : { data: [] as ProfileRow[] };
   const profiles = (profilesData ?? []) as ProfileRow[];
   const profileMap = Object.fromEntries(profiles.map((p) => [p.id, p]));
+  function displayName(p: ProfileRow | undefined): string {
+    if (!p) return 'Anonymous';
+    return p.display_name || p.username || 'Anonymous';
+  }
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -39,7 +43,7 @@ export default async function LeaderboardsPage() {
             {dailyRows.map((row) => (
               <li key={row.user_id} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
                 <span className="font-medium">#{row.rank}</span>
-                <span>{profileMap[row.user_id]?.display_name || profileMap[row.user_id]?.username || 'Anonymous'}</span>
+                <span>{displayName(profileMap[row.user_id])}</span>
                 <span className="text-brand-600 font-semibold">{row.score} pts</span>
               </li>
             ))}

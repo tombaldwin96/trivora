@@ -41,10 +41,10 @@ export default function HomeScreen() {
     }).catch(() => setSessionCheckDone(true));
   }, [router]);
 
-  // Defer first native/Supabase touch by 5s to avoid native exception during RN error conversion at boot (iOS Hermes crash).
+  // Brief defer before first Supabase/session check so native is settled after layout boot delay.
   const [sessionCheckAllowed, setSessionCheckAllowed] = useState(false);
   useEffect(() => {
-    const t = setTimeout(() => setSessionCheckAllowed(true), 5000);
+    const t = setTimeout(() => setSessionCheckAllowed(true), 600);
     return () => clearTimeout(t);
   }, []);
 
@@ -234,7 +234,7 @@ export default function HomeScreen() {
     return (
       <View style={[styles.keyboardWrap, styles.sessionCheck]}>
         {!sessionCheckAllowed && (
-          <Text style={styles.loadingText}>Loading…</Text>
+          <Text style={styles.loadingText}>Success!</Text>
         )}
       </View>
     );
@@ -274,7 +274,7 @@ export default function HomeScreen() {
             },
           ]}
         >
-          <Image source={require('@/assets/mahan.png')} style={styles.characterImage} resizeMode="contain" />
+          <Image source={require('@/assets/Logo.png')} style={styles.characterImage} resizeMode="contain" />
         </Animated.View>
       </View>
       <Pressable onPressIn={onTitlePressIn} onPressOut={onTitlePressOut} style={styles.titleBlockWrap}>

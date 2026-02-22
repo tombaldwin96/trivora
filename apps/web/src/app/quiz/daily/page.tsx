@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import Link from 'next/link';
-import { Card, Button } from '@mahan/ui';
-import { DAILY_QUIZ_QUESTION_COUNT } from '@mahan/core';
+import { Card, Button } from '@trivora/ui';
+import { DAILY_QUIZ_QUESTION_COUNT } from '@trivora/core';
 
 export default async function DailyQuizPage() {
   const supabase = await createServerSupabaseClient();

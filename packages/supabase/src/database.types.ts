@@ -23,6 +23,7 @@ export interface Database {
           level: number;
           xp: number;
           is_admin: boolean;
+          referral_code: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -166,7 +167,7 @@ export interface Database {
           division: number;
           status: MatchStatus;
           player_a: string;
-          player_b: string;
+          player_b: string | null;
           started_at: string | null;
           ended_at: string | null;
           result: Json | null;
@@ -367,6 +368,21 @@ export interface Database {
         };
         Update: Partial<Database['public']['Tables']['reports']['Insert']>;
       };
+      idea_submissions: {
+        Row: {
+          id: string;
+          first_name: string;
+          last_name: string;
+          email: string;
+          description: string;
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['idea_submissions']['Row'], 'id' | 'created_at'> & {
+          id?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['idea_submissions']['Insert']>;
+      };
       audit_logs: {
         Row: {
           id: string;
@@ -437,6 +453,52 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database['public']['Tables']['friends']['Insert']>;
+      };
+      friend_acceptance_notifications: {
+        Row: {
+          id: string;
+          user_id: string;
+          accepted_by_username: string;
+          created_at: string;
+          read_at: string | null;
+        };
+        Insert: Omit<Database['public']['Tables']['friend_acceptance_notifications']['Row'], 'id' | 'created_at'> & {
+          id?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['friend_acceptance_notifications']['Insert']>;
+      };
+      user_blocks: {
+        Row: {
+          id: string;
+          blocker_id: string;
+          blocked_id: string;
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['user_blocks']['Row'], 'id' | 'created_at'> & {
+          id?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['user_blocks']['Insert']>;
+      };
+      referral_signups: {
+        Row: {
+          id: string;
+          referrer_id: string;
+          referred_user_id: string;
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['referral_signups']['Row'], 'id' | 'created_at'> & {
+          id?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['referral_signups']['Insert']>;
+      };
+    };
+    Functions: {
+      apply_referral: {
+        Args: { p_referral_code: string };
+        Returns: Json;
       };
     };
     Enums: {

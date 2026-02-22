@@ -236,15 +236,17 @@ function StackLayout() {
             headerShown: false,
           }}
         />
+        <Stack.Screen name="profile" options={{ headerShown: false }} />
+        <Stack.Screen name="live-quiz/[id]" options={{ headerShown: false }} />
       </Stack>
     </>
   );
 }
 
 /** Blank screen after preload before any app code runs (iOS boot crash workaround). */
-const BOOT_DELAY_MS = 1200;
+const BOOT_DELAY_MS = 150;
 /** After appReady, wait this long before mounting router/Theme/Xp/Supabase tree. */
-const SAFE_GATE_MS = 2500;
+const SAFE_GATE_MS = 350;
 
 export default function RootLayout() {
   const [showPreload, setShowPreload] = useState(true);
@@ -274,15 +276,30 @@ export default function RootLayout() {
   }
 
   if (!appReady) {
-    return <View style={styles.bootDelay} />;
+    return (
+      <View style={styles.bootDelay}>
+        <Text style={styles.loadingText}>Lets go</Text>
+      </View>
+    );
   }
 
   if (!appTreeReady) {
-    return <View style={[styles.bootDelay, styles.safeGate]} />;
+    return (
+      <View style={[styles.bootDelay, styles.safeGate]}>
+        {/* Brief gate (no text – only a few ms) */}
+      </View>
+    );
   }
 
   return (
-    <ErrorBoundary>
+    <ErrorBoundary
+      fallback={
+        <View style={[styles.bootDelay, { padding: 24 }]}>
+          <Text style={[styles.loadingText, { marginBottom: 12, fontSize: 18 }]}>Something went wrong</Text>
+          <Text style={styles.loadingText}>Restart the app to continue.</Text>
+        </View>
+      }
+    >
       <ThemeProvider>
         <XpProvider>
           <StackLayout />
@@ -303,9 +320,16 @@ const styles = StyleSheet.create({
   bootDelay: {
     flex: 1,
     backgroundColor: '#f1f5f9',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   safeGate: {
     backgroundColor: '#f1f5f9',
+  },
+  loadingText: {
+    fontSize: 15,
+    color: '#94a3b8',
+    fontWeight: '500',
   },
   preloadWrap: {
     flex: 1,

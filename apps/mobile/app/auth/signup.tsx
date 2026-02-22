@@ -7,12 +7,18 @@ import { Link } from 'expo-router';
 export default function SignUpScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   async function handleSubmit() {
     setLoading(true);
-    const { error } = await supabase.auth.signUp({ email, password });
+    const ref = referralCode.trim().toUpperCase();
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: ref ? { data: { referral_code: ref } } : undefined,
+    });
     setLoading(false);
     if (error) {
       Alert.alert('Error', error.message);
@@ -38,6 +44,13 @@ export default function SignUpScreen() {
         value={password}
         onChangeText={setPassword}
         secureTextEntry
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Referral code (optional)"
+        value={referralCode}
+        onChangeText={setReferralCode}
+        autoCapitalize="characters"
       />
       <Pressable style={[styles.button, loading && styles.disabled]} onPress={handleSubmit} disabled={loading}>
         <Text style={styles.buttonText}>{loading ? 'Creating…' : 'Sign up'}</Text>

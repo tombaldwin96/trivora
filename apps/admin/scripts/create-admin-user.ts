@@ -10,7 +10,7 @@ config({ path: resolve(process.cwd(), '.env.local') });
 
 import { createClient } from '@supabase/supabase-js';
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'tom@admin.mahan.local';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'tom@admin.trivora.local';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? 'baldwin';
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

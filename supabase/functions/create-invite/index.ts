@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 
 const INVITE_EXPIRY_HOURS = 72;
-const APP_DEEP_LINK_BASE = Deno.env.get('MAHAN_APP_DEEP_LINK_BASE') ?? 'mahan://invite';
+const APP_DEEP_LINK_BASE = Deno.env.get('TRIVORA_APP_DEEP_LINK_BASE') ?? 'trivora://invite';
 
 function generateCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
     }
 
     const shareUrl = `${APP_DEEP_LINK_BASE}/${code}`;
-    const webUrl = `${Deno.env.get('MAHAN_WEB_URL') ?? ''}/invite/${code}`;
+    const webUrl = `${Deno.env.get('TRIVORA_WEB_URL') ?? ''}/invite/${code}`;
 
     return new Response(
       JSON.stringify({

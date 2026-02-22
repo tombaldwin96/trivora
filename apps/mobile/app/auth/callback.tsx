@@ -20,23 +20,27 @@ export default function AuthCallbackScreen() {
 
   useEffect(() => {
     (async () => {
-      const url = await Linking.getInitialURL();
-      if (!url || !url.includes('access_token')) {
+      try {
+        const url = await Linking.getInitialURL();
+        if (!url || !url.includes('access_token')) {
+          setStatus('error');
+          return;
+        }
+        const { access_token, refresh_token } = parseOAuthRedirectUrl(url);
+        if (!access_token || !refresh_token) {
+          setStatus('error');
+          return;
+        }
+        const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+        if (error) {
+          setStatus('error');
+          return;
+        }
+        setStatus('done');
+        router.replace('/(tabs)');
+      } catch {
         setStatus('error');
-        return;
       }
-      const { access_token, refresh_token } = parseOAuthRedirectUrl(url);
-      if (!access_token || !refresh_token) {
-        setStatus('error');
-        return;
-      }
-      const { error } = await supabase.auth.setSession({ access_token, refresh_token });
-      if (error) {
-        setStatus('error');
-        return;
-      }
-      setStatus('done');
-      router.replace('/(tabs)');
     })();
   }, [router]);
 

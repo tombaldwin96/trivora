@@ -14,10 +14,11 @@
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_JS_ENGINE": "jsc"
+        "EXPO_JS_ENGINE": "jsc",
+        "EAS_RESTORE_CACHE": "0"
       },
       "cache": {
-        "key": "jsc-ios-v4"
+        "key": "jsc-ios-v8"
       }
     }
   },

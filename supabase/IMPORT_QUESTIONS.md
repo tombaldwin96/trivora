@@ -32,7 +32,7 @@ The first row should be a header row (any text). Option order is shuffled on imp
 3. **Run the import** from the repo root:
 
    ```bash
-   pnpm --filter @mahan/supabase run import-questions -- path/to/your-questions.csv
+   pnpm --filter @trivora/supabase run import-questions -- path/to/your-questions.csv
    ```
 
    Or from `packages/supabase`:

@@ -5,9 +5,9 @@ import { createAdminSupabase } from '@/lib/supabase';
 export default async function AdminCategoriesPage() {
   const supabase = await createAdminSupabase();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+  if (!user) redirect('/');
   const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
-  if (!(profile as { is_admin?: boolean } | null)?.is_admin) redirect('/login');
+  if (!(profile as { is_admin?: boolean } | null)?.is_admin) redirect('/');
 
   const { data: categoriesData } = await supabase.from('categories').select('*').order('sort_order');
   type CategoryRow = { id: string; name: string; slug: string; is_active: boolean; sort_order: number };

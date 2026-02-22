@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { createAdminSupabase } from '@/lib/supabase';
 
 const ADMIN_USERNAME = 'tom';
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'tom@admin.mahan.local';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'tom@admin.trivora.local';
 
 export async function loginAction(formData: FormData) {
   const username = (formData.get('username') as string)?.trim() ?? '';
@@ -14,13 +14,16 @@ export async function loginAction(formData: FormData) {
     return { error: 'Username and password are required' };
   }
 
-  if (username !== ADMIN_USERNAME) {
+  const supabase = await createAdminSupabase();
+  const isEmail = username.includes('@');
+  const signInEmail = isEmail ? username : (username === ADMIN_USERNAME ? ADMIN_EMAIL : null);
+
+  if (!signInEmail) {
     return { error: 'Invalid username or password' };
   }
 
-  const supabase = await createAdminSupabase();
   const { data: { user }, error: signInError } = await supabase.auth.signInWithPassword({
-    email: ADMIN_EMAIL,
+    email: signInEmail,
     password,
   });
 

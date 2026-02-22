@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
-import { Card, Button } from '@mahan/ui';
+import { Card, Button } from '@trivora/ui';
 import { trackEvent } from '@/lib/analytics';
 
 export default function OneVOnePage() {

@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
-import { Card, Button } from '@mahan/ui';
-import { scoreSingleAnswer, clampReactionTime } from '@mahan/core';
+import { Card, Button } from '@trivora/ui';
+import { scoreSingleAnswer, clampReactionTime } from '@trivora/core';
 import { trackEvent } from '@/lib/analytics';
 
 type Question = {
@@ -99,7 +99,7 @@ export default function DailyQuizPlayPage() {
     if (index + 1 >= questions.length) {
       await (supabase.from('attempts') as any).update({ ended_at: new Date().toISOString() }).eq('id', attemptId);
       trackEvent('daily_quiz_complete', { score: points });
-      router.push('/quiz/daily/result?attempt_id=' + attemptId);
+      router.push('/dashboard');
       return;
     }
     setIndex((i) => i + 1);

@@ -5,9 +5,9 @@ import { createAdminSupabase } from '@/lib/supabase';
 export default async function AdminLivePage() {
   const supabase = await createAdminSupabase();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+  if (!user) redirect('/');
   const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
-  if (!(profile as { is_admin?: boolean } | null)?.is_admin) redirect('/login');
+  if (!(profile as { is_admin?: boolean } | null)?.is_admin) redirect('/');
 
   const { data: sessionsData } = await supabase.from('live_sessions').select('id, quiz_id, status, started_at, ended_at').order('created_at', { ascending: false }).limit(20);
   type SessionRow = { id: string; quiz_id: string; status: string; started_at: string | null; ended_at: string | null };

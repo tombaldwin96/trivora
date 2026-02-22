@@ -5,6 +5,7 @@ const MIN_HUMAN_MS = 300;
 const BASE_POINTS = 100;
 const MAX_TIME_BONUS = 50;
 
+/** Default (e.g. Quick Fire) scoring. */
 function scoreAnswer(correct: boolean, timeMs: number, timeLimitMs: number): number {
   if (!correct) return 0;
   const clamped = Math.max(timeMs, MIN_HUMAN_MS);
@@ -12,6 +13,21 @@ function scoreAnswer(correct: boolean, timeMs: number, timeLimitMs: number): num
     ? Math.round(MAX_TIME_BONUS * (1 - clamped / timeLimitMs))
     : 0;
   return BASE_POINTS + Math.max(0, bonus);
+}
+
+/** Daily quiz: 100 pts if correct within 1s; lose 8 pts per second after 1s. Incorrect = 0. */
+const DAILY_MAX_POINTS = 100;
+const DAILY_BONUS_SECONDS = 1;
+const DAILY_POINTS_LOST_PER_SECOND = 8;
+const POINTS_PER_MS = DAILY_POINTS_LOST_PER_SECOND / 1000;
+
+function scoreDailyAnswer(correct: boolean, timeMs: number): number {
+  if (!correct) return 0;
+  const ms = Number(timeMs) || 0;
+  if (ms <= DAILY_BONUS_SECONDS * 1000) return DAILY_MAX_POINTS;
+  const overMs = ms - DAILY_BONUS_SECONDS * 1000;
+  const lost = overMs * POINTS_PER_MS;
+  return Math.max(0, Math.round(DAILY_MAX_POINTS - lost));
 }
 
 Deno.serve(async (req) => {
@@ -51,7 +67,7 @@ Deno.serve(async (req) => {
 
     const { data: attempt } = await supabase
       .from('attempts')
-      .select('id, user_id, quiz_id, detail_json, ended_at')
+      .select('id, user_id, quiz_id, mode, detail_json, ended_at')
       .eq('id', attempt_id)
       .single();
 
@@ -83,8 +99,11 @@ Deno.serve(async (req) => {
     }
 
     const correct = question.correct_index === Number(answer_index);
-    const timeLimitMs = question.time_limit_ms ?? 15000;
-    const points = scoreAnswer(correct, Number(time_ms), timeLimitMs);
+    const timeLimitMs = question.time_limit_ms ?? 60000;
+    const isDaily = attempt.mode === 'daily';
+    const points = isDaily
+      ? scoreDailyAnswer(correct, Number(time_ms))
+      : scoreAnswer(correct, Number(time_ms), timeLimitMs);
 
     const details: unknown[] = Array.isArray(attempt.detail_json) ? [...attempt.detail_json] : [];
     details.push({

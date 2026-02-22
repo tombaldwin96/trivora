@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ['@mahan/core', '@mahan/supabase', '@mahan/ui'],
+  transpilePackages: ['@trivora/core', '@trivora/supabase', '@trivora/ui'],
   reactStrictMode: true,
 };
 

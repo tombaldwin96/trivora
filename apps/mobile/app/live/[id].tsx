@@ -10,7 +10,8 @@ import { useThrottledLiveSession } from '@/lib/live-quiz-client';
  * - Do NOT subscribe to live_answers realtime (too high volume); use live_sessions only.
  */
 export default function LiveSessionScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id?: string }>();
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const session = useThrottledLiveSession(id ?? null);
 
   if (!id) {

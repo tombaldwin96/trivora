@@ -1,5 +1,5 @@
 {
-  "name": "@mahan/ui",
+  "name": "@trivora/ui",
   "version": "0.0.1",
   "private": true,
   "main": "./dist/index.js",

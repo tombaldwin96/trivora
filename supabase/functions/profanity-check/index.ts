@@ -3,7 +3,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 
 const BLOCKLIST = [
   'bad', 'curse', 'offensive', 'slur', 'abuse', 'hate', 'spam',
-  'admin', 'moderator', 'support', 'mahan',
+  'admin', 'moderator', 'support', 'trivora',
 ];
 const MIN_LENGTH = 3;
 const MAX_USERNAME = 24;

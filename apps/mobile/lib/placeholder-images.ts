@@ -4,13 +4,14 @@ const H = 220;
 const base = (seed: string) => `https://picsum.photos/seed/${seed}/${W}/${H}`;
 
 export const PLACEHOLDER_IMAGES = {
-  dailyQuiz: base('mahan-daily'),
-  oneVone: base('mahan-1v1'),
-  leaderboards: base('mahan-leaderboard'),
-  liveQuiz: base('mahan-live'),
-  arena: base('mahan-arena'),
-  tournament: base('mahan-tournament'),
-  profile: base('mahan-profile'),
-  signIn: base('mahan-signin'),
-  signUp: base('mahan-signup'),
+  dailyQuiz: base('trivora-daily'),
+  oneVone: base('trivora-1v1'),
+  leaderboards: base('trivora-leaderboard'),
+  liveQuiz: base('trivora-live'),
+  arena: base('trivora-arena'),
+  quickFire: base('trivora-quickfire'),
+  tournament: base('trivora-tournament'),
+  profile: base('trivora-profile'),
+  signIn: base('trivora-signin'),
+  signUp: base('trivora-signup'),
 } as const;
