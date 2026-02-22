@@ -7,6 +7,26 @@ This app is the combined **marketing site** (homepage) and **admin portal** for 
 
 ---
 
+## Simplest way to get the admin portal online
+
+**Option A – Use it from anywhere right now (no deploy)**  
+Run the app locally (`pnpm --filter @trivora/web dev` or your usual command on port 3001), then expose it with a tunnel:
+
+- **ngrok:** `npx ngrok http 3001` → use the HTTPS URL (e.g. `https://abc123.ngrok.io/admin`).
+- **Cloudflare Tunnel:** `npx cloudflared tunnel --url http://localhost:3001` → use the printed URL.
+
+Your machine must stay on and the dev server running. Good for quick access from another device or sharing a link.
+
+**Option B – Deploy so it’s always online (Render)**  
+1. Render → **Web Service** → connect GitHub repo.  
+2. **Root directory:** leave **empty**.  
+3. **Build command:** `pnpm install --ignore-scripts && pnpm exec turbo run build --filter=@trivora/web...`  
+4. **Start command:** `pnpm --filter @trivora/web start`  
+5. **Environment:** Add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (and optional `ADMIN_USERNAME`, `ADMIN_PASSWORD`).  
+6. Deploy. Your admin is at **https://&lt;your-service&gt;.onrender.com/admin**.
+
+---
+
 ## Will the admin tools work?
 
 **Yes, for the parts that are built.** When you set the required env vars (see below), the following work on deploy:
@@ -53,14 +73,15 @@ No start command needed; Vercel runs the Next.js serverless runtime.
 
 Use a **Web Service** so Next.js runs with Server Actions, auth, and Supabase. No static export; one Node server.
 
+**Important:** This app is in a pnpm monorepo and depends on `@trivora/ui`, `@trivora/core`, `@trivora/supabase`. You must build from the **repo root** so those workspace packages are installed and linked. Do **not** set Root Directory to `apps/web` or the build will fail with "Can't resolve '@trivora/ui'".
+
 1. **Render dashboard:** New → **Web Service**.
 2. **Connect** your repo (e.g. GitHub).
 3. **Settings:**
-   - **Root directory:** `apps/web` (or leave blank and use repo root in build/start).
-   - **Build command:**  
-     - If root directory is `apps/web`: `npm run build` or `pnpm build`  
-     - If repo root: `pnpm install && pnpm --filter @trivora/web build`
-   - **Start command:** `npm run start` or `pnpm --filter @trivora/web start`
+   - **Root directory:** leave **empty** (use repo root).
+   - **Build command:** `pnpm install --ignore-scripts && pnpm exec turbo run build --filter=@trivora/web...`  
+     (`--ignore-scripts` skips the mobile postinstall (~3 min). Turbo then builds only the web app and its deps: `@trivora/core`, `@trivora/ui`, `@trivora/supabase`, then web. Start still uses the same command below.)
+   - **Start command:** `pnpm --filter @trivora/web start`
    - **Publish directory:** leave empty.
 
 4. **Environment variables** (Render → Environment):
