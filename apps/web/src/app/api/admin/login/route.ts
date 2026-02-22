@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { createHmac, timingSafeEqual } from 'crypto';
 
 const COOKIE_NAME = 'admin_session';
@@ -14,24 +13,28 @@ function sign(value: string): string {
   return createHmac('sha256', getSecret()).update(value).digest('hex');
 }
 
+function redirectToAdmin(request: Request, error?: string): NextResponse {
+  const url = new URL(request.url);
+  const adminUrl = new URL('/admin', url.origin);
+  if (error) adminUrl.searchParams.set('error', error);
+  return NextResponse.redirect(adminUrl, 302);
+}
+
 export async function POST(request: Request) {
+  const url = new URL(request.url);
+  const adminUrl = new URL('/admin', url.origin);
+
   try {
     const body = await request.formData();
     const username = (body.get('username') as string)?.trim() ?? '';
     const password = (body.get('password') as string) ?? '';
 
-    const expectedUsername = process.env.ADMIN_USERNAME ?? 'tom';
-    const expectedPassword = process.env.ADMIN_PASSWORD ?? 'baldwin';
-
-    if (!expectedPassword) {
-      return NextResponse.json(
-        { error: 'Admin login not configured. Set ADMIN_USERNAME and ADMIN_PASSWORD.' },
-        { status: 500 }
-      );
-    }
+    // Use || so empty env falls back to default
+    const expectedUsername = (process.env.ADMIN_USERNAME || 'tom').trim();
+    const expectedPassword = process.env.ADMIN_PASSWORD || 'baldwin';
 
     if (!username || !password) {
-      return NextResponse.json({ error: 'Username and password are required' }, { status: 400 });
+      return redirectToAdmin(request, 'Username+and+password+required');
     }
 
     const userOk = username === expectedUsername;
@@ -42,25 +45,25 @@ export async function POST(request: Request) {
       timingSafeEqual(Buffer.from(passHash, 'utf8'), Buffer.from(expectedHash, 'utf8'));
 
     if (!userOk || !passOk) {
-      return NextResponse.json({ error: 'Invalid username or password' }, { status: 401 });
+      return redirectToAdmin(request, 'Invalid+username+or+password');
     }
 
     const expiry = Date.now() + SESSION_DURATION_MS;
     const payload = `${username}:${expiry}`;
     const token = `${payload}.${sign(payload)}`;
 
-    const cookieStore = await cookies();
-    cookieStore.set(COOKIE_NAME, token, {
+    // Set cookie on the redirect response so browser stores it and sends it to /admin
+    const res = NextResponse.redirect(adminUrl, 302);
+    res.cookies.set(COOKIE_NAME, token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: SESSION_DURATION_MS / 1000,
+      maxAge: Math.floor(SESSION_DURATION_MS / 1000),
       path: '/',
     });
-
-    return NextResponse.json({ ok: true });
+    return res;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: `Login failed: ${message}` }, { status: 500 });
+    return redirectToAdmin(request, encodeURIComponent(`Login+failed:+${message}`));
   }
 }

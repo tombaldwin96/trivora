@@ -3,8 +3,11 @@ import { getAdminSession } from './actions';
 import { AdminLoginForm } from './AdminLoginForm';
 import { AdminLogout } from './AdminLogout';
 
-export default async function AdminPage() {
+type PageProps = { searchParams?: { error?: string } };
+
+export default async function AdminPage(props: PageProps) {
   const session = await getAdminSession();
+  const error = props.searchParams?.error ?? null;
 
   if (!session.loggedIn) {
     return (
@@ -12,7 +15,7 @@ export default async function AdminPage() {
         <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
           <h1 className="text-xl font-semibold text-slate-900 mb-1">Trivora Admin</h1>
           <p className="text-sm text-slate-500 mb-6">Sign in with your username and password.</p>
-          <AdminLoginForm />
+          <AdminLoginForm error={error} />
         </div>
       </main>
     );

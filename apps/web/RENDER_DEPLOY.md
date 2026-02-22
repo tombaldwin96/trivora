@@ -92,6 +92,8 @@ Use a **Web Service** so Next.js runs with Server Actions, auth, and Supabase. N
 
 5. **Custom domain:** Add `www.trivoraapp.com` (and optionally redirect `trivoraapp.com`).
 
+**If Render doesn’t auto-deploy on push:** In the dashboard open your service → **Manual Deploy** → **Deploy latest commit**. Ensure the branch is `master` and **Auto-Deploy** is **On** in Settings.
+
 ---
 
 ### Option 3: Render Static Site (limited)
