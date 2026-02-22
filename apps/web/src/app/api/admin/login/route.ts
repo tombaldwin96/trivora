@@ -13,16 +13,32 @@ function sign(value: string): string {
   return createHmac('sha256', getSecret()).update(value).digest('hex');
 }
 
+/** Use public origin (e.g. trivora-cdmg.onrender.com) when behind a proxy like Render. */
+function getPublicOrigin(request: Request): string {
+  const forwardedProto = request.headers.get('x-forwarded-proto');
+  const forwardedHost = request.headers.get('x-forwarded-host');
+  const host = request.headers.get('host');
+  if (forwardedHost) {
+    const proto = forwardedProto === 'https' ? 'https' : forwardedProto === 'http' ? 'http' : 'https';
+    return `${proto}://${forwardedHost}`;
+  }
+  if (host) {
+    const proto = forwardedProto === 'https' ? 'https' : forwardedProto === 'http' ? 'http' : 'https';
+    return `${proto}://${host}`;
+  }
+  return new URL(request.url).origin;
+}
+
 function redirectToAdmin(request: Request, error?: string): NextResponse {
-  const url = new URL(request.url);
-  const adminUrl = new URL('/admin', url.origin);
+  const origin = getPublicOrigin(request);
+  const adminUrl = new URL('/admin', origin);
   if (error) adminUrl.searchParams.set('error', error);
   return NextResponse.redirect(adminUrl, 302);
 }
 
 export async function POST(request: Request) {
-  const url = new URL(request.url);
-  const adminUrl = new URL('/admin', url.origin);
+  const origin = getPublicOrigin(request);
+  const adminUrl = new URL('/admin', origin);
 
   try {
     const body = await request.formData();
