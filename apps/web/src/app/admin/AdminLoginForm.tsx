@@ -1,27 +1,27 @@
 'use client';
 
-import { useState } from 'react';
+import { useFormState } from 'react-dom';
+import { useFormStatus } from 'react-dom';
 import { loginAction } from './actions';
 
-export function AdminLoginForm() {
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="w-full rounded-lg bg-slate-800 py-2.5 text-white font-medium hover:bg-slate-700 disabled:opacity-50 disabled:pointer-events-none transition-colors"
+    >
+      {pending ? 'Signing in…' : 'Sign in'}
+    </button>
+  );
+}
 
-  async function handleSubmit(formData: FormData) {
-    setError(null);
-    setLoading(true);
-    try {
-      const result = await loginAction(formData);
-      if (result?.error) {
-        setError(result.error);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }
+export function AdminLoginForm() {
+  const [state, formAction] = useFormState(loginAction, { error: null });
 
   return (
-    <form action={handleSubmit} className="space-y-4">
+    <form action={formAction} className="space-y-4" method="post">
       <div>
         <label htmlFor="username" className="block text-sm font-medium text-slate-700 mb-1">
           Username
@@ -50,14 +50,8 @@ export function AdminLoginForm() {
           required
         />
       </div>
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full rounded-lg bg-slate-800 py-2.5 text-white font-medium hover:bg-slate-700 disabled:opacity-50 disabled:pointer-events-none transition-colors"
-      >
-        {loading ? 'Signing in…' : 'Sign in'}
-      </button>
+      {state?.error && <p className="text-sm text-red-600" role="alert">{state.error}</p>}
+      <SubmitButton />
     </form>
   );
 }

@@ -17,7 +17,12 @@ function sign(value: string): string {
   return createHmac('sha256', getSecret()).update(value).digest('hex');
 }
 
-export async function loginAction(formData: FormData) {
+export type LoginState = { error: string | null };
+
+export async function loginAction(
+  _prevState: LoginState,
+  formData: FormData
+): Promise<LoginState> {
   const username = (formData.get('username') as string)?.trim() ?? '';
   const password = (formData.get('password') as string) ?? '';
 
