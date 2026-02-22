@@ -1,13 +1,32 @@
 import Link from 'next/link';
+import { headers } from 'next/headers';
 import { getAdminSession } from './actions';
 import { AdminLoginForm } from './AdminLoginForm';
 import { AdminLogout } from './AdminLogout';
 
-type PageProps = { searchParams?: { error?: string } };
+export const dynamic = 'force-dynamic';
+
+function getPublicOrigin(headersList: Headers): string {
+  const forwardedProto = headersList.get('x-forwarded-proto');
+  const forwardedHost = headersList.get('x-forwarded-host');
+  const host = headersList.get('host');
+  const h = forwardedHost ?? host;
+  const proto = forwardedProto === 'https' ? 'https' : forwardedProto === 'http' ? 'http' : 'https';
+  return h ? `${proto}://${h}` : '';
+}
+
+type PageProps = { searchParams?: Promise<{ error?: string }> | { error?: string } };
 
 export default async function AdminPage(props: PageProps) {
   const session = await getAdminSession();
-  const error = props.searchParams?.error ?? null;
+  const rawParams = props.searchParams;
+  const searchParams = rawParams && typeof (rawParams as Promise<unknown>).then === 'function'
+    ? await (rawParams as Promise<{ error?: string }>)
+    : (rawParams as { error?: string }) ?? {};
+  const error = searchParams?.error ?? null;
+
+  const headersList = await headers();
+  const origin = getPublicOrigin(headersList) || '';
 
   if (!session.loggedIn) {
     return (
@@ -15,7 +34,7 @@ export default async function AdminPage(props: PageProps) {
         <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
           <h1 className="text-xl font-semibold text-slate-900 mb-1">Trivora Admin</h1>
           <p className="text-sm text-slate-500 mb-6">Sign in with your username and password.</p>
-          <AdminLoginForm error={error} />
+          <AdminLoginForm error={error} formAction={origin ? `${origin}/api/admin/login` : undefined} />
         </div>
       </main>
     );

@@ -1,8 +1,15 @@
 // Server component: plain form POST, no JavaScript required
-export function AdminLoginForm({ error }: { error?: string | null }) {
+export function AdminLoginForm({
+  error,
+  formAction,
+}: {
+  error?: string | null;
+  formAction?: string;
+}) {
   const message = error ? decodeURIComponent(error.replace(/\+/g, ' ')) : null;
+  const action = formAction ?? '/api/admin/login';
   return (
-    <form action="/api/admin/login" method="post" className="space-y-4">
+    <form action={action} method="post" className="space-y-4">
       <div>
         <label htmlFor="username" className="block text-sm font-medium text-slate-700 mb-1">
           Username
