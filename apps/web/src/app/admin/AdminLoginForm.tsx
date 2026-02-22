@@ -1,37 +1,37 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useFormState } from 'react-dom';
-import { useFormStatus } from 'react-dom';
-import { loginAction } from './actions';
-
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="w-full rounded-lg bg-slate-800 py-2.5 text-white font-medium hover:bg-slate-700 disabled:opacity-50 disabled:pointer-events-none transition-colors"
-    >
-      {pending ? 'Signing in…' : 'Sign in'}
-    </button>
-  );
-}
+import { useState } from 'react';
 
 export function AdminLoginForm() {
-  const router = useRouter();
-  const [state, formAction] = useFormState(loginAction, { error: null });
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (state?.success) {
-      router.refresh();
-      router.push('/admin');
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.ok) {
+        window.location.href = '/admin';
+        return;
+      }
+      setError(data?.error ?? (res.ok ? 'Something went wrong' : `Login failed (${res.status})`));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error');
+    } finally {
+      setLoading(false);
     }
-  }, [state?.success, router]);
+  }
 
   return (
-    <form action={formAction} className="space-y-4" method="post">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label htmlFor="username" className="block text-sm font-medium text-slate-700 mb-1">
           Username
@@ -60,8 +60,18 @@ export function AdminLoginForm() {
           required
         />
       </div>
-      {state?.error && <p className="text-sm text-red-600" role="alert">{state.error}</p>}
-      <SubmitButton />
+      {error && (
+        <p className="text-sm text-red-600" role="alert">
+          {error}
+        </p>
+      )}
+      <button
+        type="submit"
+        disabled={loading}
+        className="w-full rounded-lg bg-slate-800 py-2.5 text-white font-medium hover:bg-slate-700 disabled:opacity-50 disabled:pointer-events-none transition-colors"
+      >
+        {loading ? 'Signing in…' : 'Sign in'}
+      </button>
     </form>
   );
 }
