@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useFormState } from 'react-dom';
 import { useFormStatus } from 'react-dom';
 import { loginAction } from './actions';
@@ -18,7 +20,15 @@ function SubmitButton() {
 }
 
 export function AdminLoginForm() {
+  const router = useRouter();
   const [state, formAction] = useFormState(loginAction, { error: null });
+
+  useEffect(() => {
+    if (state?.success) {
+      router.refresh();
+      router.push('/admin');
+    }
+  }, [state?.success, router]);
 
   return (
     <form action={formAction} className="space-y-4" method="post">

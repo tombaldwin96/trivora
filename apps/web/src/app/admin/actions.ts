@@ -17,49 +17,55 @@ function sign(value: string): string {
   return createHmac('sha256', getSecret()).update(value).digest('hex');
 }
 
-export type LoginState = { error: string | null };
+export type LoginState = { error: string | null; success?: boolean };
 
 export async function loginAction(
   _prevState: LoginState,
   formData: FormData
 ): Promise<LoginState> {
-  const username = (formData.get('username') as string)?.trim() ?? '';
-  const password = (formData.get('password') as string) ?? '';
+  try {
+    const username = (formData.get('username') as string)?.trim() ?? '';
+    const password = (formData.get('password') as string) ?? '';
 
-  const expectedUsername = process.env.ADMIN_USERNAME ?? 'tom';
-  const expectedPassword = process.env.ADMIN_PASSWORD ?? 'baldwin';
+    const expectedUsername = process.env.ADMIN_USERNAME ?? 'tom';
+    const expectedPassword = process.env.ADMIN_PASSWORD ?? 'baldwin';
 
-  if (!expectedPassword) {
-    return { error: 'Admin login not configured. Set ADMIN_USERNAME and ADMIN_PASSWORD in .env.local' };
+    if (!expectedPassword) {
+      return { error: 'Admin login not configured. Set ADMIN_USERNAME and ADMIN_PASSWORD in .env.local' };
+    }
+
+    if (!username || !password) {
+      return { error: 'Username and password are required' };
+    }
+
+    const userOk = username === expectedUsername;
+    const passHash = sign(password);
+    const expectedHash = sign(expectedPassword);
+    const passOk = passHash.length === expectedHash.length && timingSafeEqual(Buffer.from(passHash, 'utf8'), Buffer.from(expectedHash, 'utf8'));
+
+    if (!userOk || !passOk) {
+      return { error: 'Invalid username or password' };
+    }
+
+    const expiry = Date.now() + SESSION_DURATION_MS;
+    const payload = `${username}:${expiry}`;
+    const token = `${payload}.${sign(payload)}`;
+
+    const cookieStore = await cookies();
+    cookieStore.set(COOKIE_NAME, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: SESSION_DURATION_MS / 1000,
+      path: '/',
+    });
+
+    // Return success so client can redirect; server redirect() often not followed after Server Action on some hosts
+    return { error: null, success: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { error: `Login failed: ${message}` };
   }
-
-  if (!username || !password) {
-    return { error: 'Username and password are required' };
-  }
-
-  const userOk = username === expectedUsername;
-  const passHash = sign(password);
-  const expectedHash = sign(expectedPassword);
-  const passOk = passHash.length === expectedHash.length && timingSafeEqual(Buffer.from(passHash, 'utf8'), Buffer.from(expectedHash, 'utf8'));
-
-  if (!userOk || !passOk) {
-    return { error: 'Invalid username or password' };
-  }
-
-  const expiry = Date.now() + SESSION_DURATION_MS;
-  const payload = `${username}:${expiry}`;
-  const token = `${payload}.${sign(payload)}`;
-
-  const cookieStore = await cookies();
-  cookieStore.set(COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: SESSION_DURATION_MS / 1000,
-    path: '/',
-  });
-
-  redirect('/admin');
 }
 
 export async function logoutAction() {
